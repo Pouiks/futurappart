@@ -1,0 +1,303 @@
+{
+    "Search": {
+        "title": "Logement Étudiant à {city}",
+        "subtitle": "Découvrez notre sélection des meilleures résidences.",
+        "filters": {
+            "title": "Filtres",
+            "city": "Ville",
+            "budgetMax": "Budget Max",
+            "surfaceMin": "Surface Min",
+            "type": "Type",
+            "priority": "Priorité",
+            "priorities": {
+                "price": "Prix",
+                "balance": "Équilibré",
+                "surface": "Surface"
+            }
+        },
+        "results": {
+            "launchSearch": "Lancez une recherche",
+            "launchSearchDesc": "Configurez vos critères à gauche pour trouver votre pépite.",
+            "top3": "Top 3 Recommandations",
+            "analyzed": "{count} offres analysées",
+            "others": "D'autres pépites détectées",
+            "othersDesc": "Ces logements correspondent aussi à vos critères, mais avec un score légèrement inférieur.",
+            "emptyTitle": "Oups, c'est serré !",
+            "emptyDesc": "Aucun résultat exact pour ces critères.",
+            "match": "Match: {quality}",
+            "view": "Voir"
+        }
+    },
+    "UnitCard": {
+        "bestChoice": "LE MEILLEUR CHOIX",
+        "why": "Pourquoi ce choix ?",
+        "viewOffer": "Voir l'offre",
+        "surfaceUnknown": "Surface N/C",
+        "monthCC": "/mois CC",
+        "scoreMatch": "Score match",
+        "scoreDetail": "Détail du Score",
+        "price": "Prix",
+        "trust": "Confiance",
+        "surface": "Surface",
+        "compare": "Comparé à la moyenne du secteur.",
+        "excellentValue": "Excellent rapport qualité/prix",
+        "priceFrom": "à partir de",
+        "available": "Disponible",
+        "availableFrom": "Disponible le",
+        "rooms": "pièces",
+        "furnished": "Meublé",
+        "unfurnished": "Non meublé"
+    },
+    "CityPage": {
+        "title": "Logement étudiant à {city}",
+        "subtitle": "Découvrez notre sélection des meilleures résidences étudiantes à {city}. Comparez les prix, les surfaces et réservez votre studio ou colocation dès maintenant.",
+        "noResults": "Aucune offre trouvée à {city} pour le moment",
+        "noResultsDesc": "Essayez une autre ville ou élargissez votre recherche.",
+        "nationalSearch": "Lancer une recherche nationale",
+        "seoTitle": "Pourquoi choisir un logement étudiant à {city} ?",
+        "seoIntro": "{city} est une ville dynamique qui attire chaque année des milliers d'étudiants. Que vous cherchiez un studio proche des universités ou une colocation en centre-ville, le marché locatif y est tendu. Passer par une résidence gérée offre de nombreux avantages : proximité des campus, loyers tout compris, et une communauté étudiante active.",
+        "seoNeighborhoodsTitle": "Les quartiers les plus prisés",
+        "seoNeighborhoodsDesc": "Pour être au plus près de la vie étudiante, ciblez les quartiers proches des grandes écoles et facultés. N'oubliez pas de vérifier la desserte en transports en commun pour faciliter vos trajets quotidiens."
+    },
+    "Navbar": {
+        "search": "Rechercher",
+        "findHousing": "Trouver un logement",
+        "cities": "Villes Phares",
+        "resources": "Ressources",
+        "blog": "Blog & Conseils",
+        "aids": "Aides au Logement",
+        "guarantor": "Garant & Dossier",
+        "howItWorks": "Comment ça marche",
+        "ownerSpace": "Espace Partenaire",
+        "help": "Aide",
+        "login": "Acceder à mon compte",
+        "myAccount": "Mon Compte"
+    },
+    "Hero": {
+        "title": "Trouvez votre logement étudiant idéal",
+        "subtitle": "Plus de 50 000 offres vérifiées partout en France",
+        "searchPlaceholder": "Ville, école..."
+    },
+    "SearchOverlay": {
+        "title": "Trouvez votre logement idéal",
+        "cityLabel": "Dans quelle ville ?",
+        "cityPlaceholder": "Sélectionnez une ville",
+        "arrivalDateLabel": "Date d'arrivée souhaitée",
+        "budgetLabel": "Budget max mensuel",
+        "typeLabel": "Type de logement",
+        "cta": "Rechercher maintenant",
+        "footer": "✨ Gratuit • Sans inscription • Résultats instantanés",
+        "studio": "Studio",
+        "coloc": "Colocation",
+        "coliving": "Coliving"
+    },
+    "SeoContent": {
+        "title": "Trouver un logement étudiant sans passer par un particulier",
+        "subtitle": "Plus de sécurité, moins d'arnaques, et des services inclus : découvrez pourquoi 70% des étudiants privilégient désormais les résidences gérées.",
+        "col1": {
+            "title": "Comparateur Indépendant",
+            "p1": "Contrairement aux plateformes classiques, <strong>MonLogementEtudiant</strong> ne favorise aucune enseigne. Notre algorithme analyse chaque logement selon : Prix, Surface et Qualité de vie.",
+            "p2": "Nous agrégeons les offres des plus grands gestionnaires (Studéa, Les Belles Années, Kley...) pour une vision complète du marché."
+        },
+        "col2": {
+            "title": "Fiabilité Garantie",
+            "text": "Fini les visites fantômes et les listes d'attente payantes. Nous ne référençons que des résidences professionnelles vérifiées. Chaque offre affichée correspond à un gestionnaire identifié avec un numéro SIRET valide."
+        },
+        "col3": {
+            "title": "Pour tous les profils",
+            "studio": "<strong>Studio :</strong> Indépendance et calme. Éligible APL.",
+            "coloc": "<strong>Colocation :</strong> Partage et convivialité, grands T3/T4.",
+            "coliving": "<strong>Coliving :</strong> Chambre privée + espaces communs XXL."
+        }
+    },
+    "Stats": {
+        "title": "Les chiffres clés"
+    },
+    "HowItWorks": {
+        "title": "Comment monter son dossier ?",
+        "subtitle": "Un accompagnement étape par étape, de la constitution du dossier jusqu'à la signature du bail.",
+        "step1": {
+            "title": "Constitution du Dossier Numérique",
+            "desc": "Complétez votre profil locataire avec précision. Un dossier riche et bien renseigné est la clé pour rassurer les gestionnaires et passer en priorité."
+        },
+        "step2": {
+            "title": "Centralisation des Pièces",
+            "desc": "Téléversez l'ensemble des documents requis (identité, garants, revenus) en amont. Cette anticipation est cruciale pour la fluidité de la contractualisation."
+        },
+        "step3": {
+            "title": "Candidature Unifiée",
+            "desc": "Ciblez les résidences qui correspondent à vos critères et envoyez votre dossier unique instantanément. Notre plateforme facilite la mise en relation directe."
+        },
+        "step4": {
+            "title": "Signature Électronique",
+            "desc": "Une fois votre dossier accepté, recevez votre contrat de bail. Relisez-le calmement et signez-le électroniquement dans notre environnement sécurisé."
+        },
+        "cta": "Commencer mon dossier maintenant"
+    },
+    "HousingAid": {
+        "title": "Boostez votre budget grâce aux aides de la <caf>CAF</caf>",
+        "intro": "Le loyer est votre principale dépense, mais ne la laissez pas vous freiner. En France, la CAF peut financer jusqu'à 40% de votre logement.",
+        "p1": "APL, ALS, Mobili-Jeune... il existe de multiples dispositifs cumulables. Pourtant, 30% des étudiants oublient de les demander par méconnaissance des démarches.",
+        "p2": "Pas de panique : nous avons décrypté pour vous toutes les subtilités administratives pour optimiser votre dossier et ne rien perdre.",
+        "timeline": {
+            "step1": "Simulez vos droits CAF (avant même de visiter)",
+            "step2": "Préparez votre dossier CAF dès la signature",
+            "step3": "Percevez vos aides mensuellement"
+        },
+        "cta": "Lire le guide complet des aides"
+    },
+    "NoGuarantor": {
+        "title": "Vous n'avez pas de garant ?",
+        "subtitle": "Pas de panique, des solutions existent pour sécuriser votre dossier.",
+        "solutions": {
+            "garantme": {
+                "title": "Garantme (Partenaire)",
+                "desc": "Notre partenaire certifie votre dossier en 24h et se porte garant pour vous."
+            },
+            "visale": {
+                "title": "Garantie Visale",
+                "desc": "Le dispositif gratuit d'Action Logement pour les étudiants et jeunes actifs."
+            },
+            "family": {
+                "title": "Garant Familial",
+                "desc": "La solution classique : un proche se porte caution solidaire."
+            }
+        },
+        "cta": "Voir toutes les solutions"
+    },
+    "FAQ": {
+        "title": "Questions Fréquentes",
+        "q1": "Comment trouver un logement étudiant rapidement ?",
+        "a1": "Utilisez notre moteur de recherche pour filtrer les résidences par disponibilité immédiate (badge 'Dispo Immédiate'). En passant par une résidence privée, les dossiers sont souvent traités en 48h, contrairement aux particuliers qui peuvent prendre des semaines. Astuce : complétez votre profil à 100% pour être prioritaire.",
+        "q2": "Quelle est la différence entre colocation et coliving ?",
+        "a2": "La colocation classique partage un appartement standard (salon, cuisine). Le Coliving est conçu spécifiquement pour la communauté : vous avez votre studio ou chambre privée avec salle de bain, et accédez à des services hôteliers (ménage, salle de sport, cinéma) et des espaces communs XXL pour travailler ou socialiser.",
+        "q3": "Pourquoi passer par une résidence plutôt qu’un particulier ?",
+        "a3": "Pour la sécurité et la simplicité. Vous signez un bail standardisé sans clauses abusives. Un gestionnaire est présent sur place pour vos colis ou les problèmes techniques. De plus, les charges sont souvent 'tout inclus' (eau, électricité, internet), ce qui évite les surprises en fin de mois.",
+        "q4": "Les prix affichés sont-ils fiables ?",
+        "a4": "Oui, nous sommes connectés en direct avec les gestionnaires. Le prix affiché inclut généralement le loyer et les charges locatives. Vérifiez toujours le détail sur la fiche : certains services 'Premium' (parking, petit-déjeuner) peuvent être en supplément.",
+        "q5": "Puis-je visiter le logement avant de réserver ?",
+        "a5": "Absolument. Vous pouvez demander une visite physique ou virtuelle (visio) directemment depuis le formulaire de contact. De nombreuses résidences proposent aussi des visites 3D immersives pour vous projeter à distance.",
+        "q6": "Quels documents pour mon dossier ?",
+        "a6": "Préparez les classiques : pièce d'identité, justificatif de scolarité, et garant (avis d'imposition, fiches de paie). Si vous n'avez pas de garant physique, nous acceptons les garanties Visale ou Garantme dans la plupart des résidences partenaires."
+    },
+    "Footer": {
+        "description": "La plateforme de référence pour trouver un logement étudiant vérifié en France. Simple, sécurisé et sans frais cachés.",
+        "cities": "Villes Phares",
+        "types": "Type de Logement",
+        "legal": "Informations",
+        "terms": "Mentions Légales",
+        "contact": "Contact"
+    },
+    "Common": {
+        "loading": "Chargement..."
+    },
+    "Profile": {
+        "title": "Mon Profil & Dossier",
+        "incompleteBadge": "Profil à compléter",
+        "personalInfo": "Informations Personnelles",
+        "firstName": "Prénom",
+        "lastName": "Nom",
+        "email": "Email",
+        "phone": "Téléphone",
+        "arrivalDate": "Date d'arrivée souhaitée",
+        "income": "Revenus Mensuels",
+        "cafNumber": "Numéro Allocataire CAF",
+        "notProvided": "Non renseigné",
+        "notProvidedFem": "Non renseignée",
+        "edit": "Modifier mes informations",
+        "completeNow": "Compléter mon profil maintenant",
+        "save": "Enregistrer mes informations",
+        "banner": {
+            "title": "Finalisez votre dossier",
+            "text": "Ajoutez vos revenus et au moins un garant pour pouvoir postuler.",
+            "cta": "Compléter maintenant"
+        },
+        "placeholders": {
+            "firstName": "Ex: Thomas",
+            "lastName": "Ex: Dupont",
+            "phone": "06 12 34 56 78",
+            "income": "0",
+            "caf": "Ex: 1234567 (Optionnel)"
+        },
+        "editTitle": "Modifier mon dossier locatif",
+        "createTitle": "Créer mon profil locataire",
+        "description": "Complétez votre profil pour maximiser vos chances auprès des propriétaires. Un dossier complet est traité 2x plus vite."
+    },
+    "Guarantors": {
+        "title": "Mes Garants",
+        "none": "Aucun garant enregistré pour le moment.",
+        "add": "Ajouter un garant",
+        "physical": "Physique",
+        "organism": "Moral (Organisme)",
+        "moralLabel": "Garant Moral",
+        "physicalLabel": "Garant Physique",
+        "organismPrefix": "Organisme",
+        "fileNumber": "N° Dossier",
+        "netIncome": "Revenus nets",
+        "month": "mois",
+        "addBtn": "Ajouter ce garant",
+        "placeholders": {
+            "income": "Ex: 2500",
+            "firstName": "Prénom",
+            "lastName": "Nom",
+            "email": "Email",
+            "phone": "Téléphone",
+            "fileNumber": "Ex: 12345678"
+        },
+        "labels": {
+            "situation": "Situation professionnelle",
+            "relationship": "Lien de parenté",
+            "organismName": "Organisme de caution",
+            "id": "Numéro de dossier / Identifiant unique",
+            "incomeIndicative": "Revenus mensuels nets indicatifs"
+        },
+        "enums": {
+            "CDI": "CDI",
+            "CDD": "CDD",
+            "FONCTIONNAIRE": "Fonctionnaire",
+            "RETRAITE": "Retraité",
+            "INDEPENDANT": "Indépendant",
+            "AUTRE": "Autre",
+            "PERE": "Père",
+            "MERE": "Mère",
+            "FRERE_SOEUR": "Frère / Soeur",
+            "AUTRE_FAMILLE": "Autre Famille",
+            "AMI": "Ami(e)",
+            "VISALE": "Garantie Visale (Action Logement)",
+            "GARANTME": "GarantMe",
+            "UNCLE": "Unkle",
+            "CAUTIONEO": "Cautioneo",
+            "AUTRE_ORGANISM": "Autre organisme"
+        }
+    },
+    "Subscription": {
+        "hello": "Bonjour {name},",
+        "interested": "Ce logement vous intéresse ?",
+        "ready": "Votre dossier est prêt à être envoyé.",
+        "deposit": "Déposez votre dossier en 2 minutes.",
+        "free": "Service 100% Gratuit",
+        "guarantee": "Garantie Dossier Complet",
+        "verified": "Profil vérifié",
+        "loading": "Chargement...",
+        "sendOneClick": "Envoyer en 1 clic 🚀",
+        "submit": "Déposer mon dossier 📝",
+        "finalize": "Finaliser mon profil ⚠️",
+        "createAccountDesc": "Vous devrez créer un compte pour suivre votre candidature.",
+        "incompleteBanner": "Profil incomplet : Ajoutez vos revenus et garants pour candidater."
+    },
+    "UserMenu": {
+        "connectedAs": "Connecté en tant que",
+        "completeProfile": "Compléter mon profil",
+        "dashboard": "Tableau de bord",
+        "logout": "Se déconnecter",
+        "favorites": "Mes Favoris",
+        "applications": "Mes Candidatures"
+    },
+    "AccountSidebar": {
+        "title": "Mon Espace",
+        "profile": "Mon Profil",
+        "favorites": "Mes Favoris",
+        "applications": "Mes Candidatures",
+        "logout": "Se déconnecter"
+    }
+}

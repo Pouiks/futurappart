@@ -1,0 +1,303 @@
+{
+    "Search": {
+        "title": "Student Housing in {city}",
+        "subtitle": "Discover our selection of the best residences.",
+        "filters": {
+            "title": "Filters",
+            "city": "City",
+            "budgetMax": "Max Budget",
+            "surfaceMin": "Min Surface",
+            "type": "Type",
+            "priority": "Priority",
+            "priorities": {
+                "price": "Price",
+                "balance": "Balanced",
+                "surface": "Surface"
+            }
+        },
+        "results": {
+            "launchSearch": "Start a search",
+            "launchSearchDesc": "Configure your criteria on the left to find your gem.",
+            "top3": "Top 3 Recommendations",
+            "analyzed": "{count} offers analyzed",
+            "others": "Other gems detected",
+            "othersDesc": "These units also match your criteria, but with a slightly lower score.",
+            "emptyTitle": "Oops, it's tight!",
+            "emptyDesc": "No exact results for these filters.",
+            "match": "Match: {quality}",
+            "view": "View"
+        }
+    },
+    "UnitCard": {
+        "bestChoice": "TOP CHOICE",
+        "why": "Why this choice?",
+        "viewOffer": "View offer",
+        "priceFrom": "from",
+        "available": "Available",
+        "availableFrom": "Available on",
+        "surface": "sqm",
+        "rooms": "rooms",
+        "furnished": "Furnished",
+        "unfurnished": "Unfurnished",
+        "surfaceUnknown": "Surface N/A",
+        "monthCC": "/mo CC",
+        "scoreMatch": "Match Score",
+        "scoreDetail": "Score Detail",
+        "price": "Price",
+        "trust": "Trust",
+        "compare": "Compared to sector average.",
+        "excellentValue": "Excellent value for money"
+    },
+    "CityPage": {
+        "title": "Student Housing in {city}",
+        "subtitle": "Discover our selection of the best student residences in {city}. Compare prices, sizes and book your studio or shared flat now.",
+        "noResults": "No offers found in {city} at the moment",
+        "noResultsDesc": "Try another city or broaden your search.",
+        "nationalSearch": "Start a nationwide search",
+        "seoTitle": "Why choose student housing in {city}?",
+        "seoIntro": "{city} is a dynamic city that attracts thousands of students every year. Whether you are looking for a studio near universities or a shared flat in the city center, the rental market is tight. Choosing a managed residence offers many advantages: proximity to campuses, all-inclusive rents, and an active student community.",
+        "seoNeighborhoodsTitle": "Most popular neighborhoods",
+        "seoNeighborhoodsDesc": "To be closest to student life, target neighborhoods near major schools and faculties. Don't forget to check public transport links to ease your daily commute."
+    },
+    "Navbar": {
+        "search": "Search",
+        "findHousing": "Find a Home",
+        "cities": "Top Cities",
+        "resources": "Resources",
+        "blog": "Blog & Tips",
+        "aids": "Housing Aid",
+        "guarantor": "Guarantor & File",
+        "howItWorks": "How it works",
+        "ownerSpace": "Landlord Space",
+        "help": "Help",
+        "login": "Login",
+        "myAccount": "My Account"
+    },
+    "Hero": {
+        "title": "Find your ideal student housing",
+        "subtitle": "Over 50,000 verified offers across France",
+        "searchPlaceholder": "City, school..."
+    },
+    "SearchOverlay": {
+        "title": "Find your ideal home",
+        "cityLabel": "Which city?",
+        "cityPlaceholder": "Select a city",
+        "arrivalDateLabel": "Desired arrival date",
+        "budgetLabel": "Max monthly budget",
+        "typeLabel": "Housing type",
+        "cta": "Search now",
+        "footer": "✨ Free • No registration • Instant results",
+        "studio": "Studio",
+        "coloc": "Shared Flat",
+        "coliving": "Coliving"
+    },
+    "SeoContent": {
+        "title": "Find student housing without dealing with private landlords",
+        "subtitle": "More security, fewer scams, and included services: discover why 70% of students now prefer managed residences.",
+        "col1": {
+            "title": "Independent Comparator",
+            "p1": "Unlike traditional platforms, <strong>MonLogementEtudiant</strong> does not favor any brand. Our algorithm analyzes each housing based on: Price, Area, and Quality of Life.",
+            "p2": "We aggregate offers from the largest managers (Studéa, Les Belles Années, Kley...) for a complete market view."
+        },
+        "col2": {
+            "title": "Guaranteed Reliability",
+            "text": "No more ghost visits and paid waiting lists. We only list verified professional residences. Each offer displayed corresponds to an identified manager with a valid SIRET number."
+        },
+        "col3": {
+            "title": "For all profiles",
+            "studio": "<strong>Studio:</strong> Independence and calm. APL eligible.",
+            "coloc": "<strong>Shared Flat:</strong> Sharing and conviviality, large T3/T4.",
+            "coliving": "<strong>Coliving:</strong> Private room + XXL common areas."
+        }
+    },
+    "Stats": {
+        "title": "Key Figures"
+    },
+    "HowItWorks": {
+        "title": "How to build your file?",
+        "subtitle": "Step-by-step support, from creating your file to signing the lease.",
+        "step1": {
+            "title": "Digital File Creation",
+            "desc": "Complete your tenant profile with precision. A rich and well-filled file is the key to reassuring managers and getting priority."
+        },
+        "step2": {
+            "title": "Centralization of Documents",
+            "desc": "Upload all required documents (ID, guarantors, income) in advance. This anticipation is crucial for the fluidity of the contract process."
+        },
+        "step3": {
+            "title": "Unified Application",
+            "desc": "Target residences that match your criteria and send your unique file instantly. Our platform facilitates direct connection."
+        },
+        "step4": {
+            "title": "Electronic Signature",
+            "desc": "Once your file is accepted, receive your lease agreement. Read it calmly and sign it electronically in our secure environment."
+        },
+        "cta": "Start my file now"
+    },
+    "HousingAid": {
+        "title": "Boost your budget with <caf>CAF</caf> aid",
+        "intro": "Rent is your main expense, but don't let it hold you back. In France, CAF can finance up to 40% of your housing.",
+        "p1": "APL, ALS, Mobili-Jeune... there are multiple cumulative schemes. Yet, 30% of students forget to ask for them due to lack of knowledge of the procedures.",
+        "p2": "Don't panic: we have deciphered all the administrative subtleties for you to optimize your file and lose nothing.",
+        "timeline": {
+            "step1": "Simulate your CAF rights (even before visiting)",
+            "step2": "Prepare your CAF file as soon as you sign",
+            "step3": "Receive your aid monthly"
+        },
+        "cta": "Read the full aid guide"
+    },
+    "NoGuarantor": {
+        "title": "You don't have a guarantor?",
+        "subtitle": "Don't panic, solutions exist to secure your file.",
+        "solutions": {
+            "garantme": {
+                "title": "Garantme (Partner)",
+                "desc": "Our partner certifies your file in 24h and acts as a guarantor for you."
+            },
+            "visale": {
+                "title": "Visale Guarantee",
+                "desc": "The free Action Logement scheme for students and young professionals."
+            },
+            "family": {
+                "title": "Family Guarantor",
+                "desc": "The classic solution: a relative acts as a joint surety."
+            }
+        },
+        "cta": "See all solutions"
+    },
+    "FAQ": {
+        "title": "Frequently Asked Questions",
+        "q1": "How to find student housing quickly?",
+        "a1": "Use our search engine to filter residences by immediate availability (badge 'Immediate Avail'). When going through a private residence, applications are often processed within 48h, unlike private landlords who can take weeks. Tip: complete your profile 100% to be prioritized.",
+        "q2": "What is the difference between shared flat and coliving?",
+        "a2": "Classic shared flat shares a standard apartment (living room, kitchen). Coliving is designed specifically for community: you have your private studio or room with bathroom, and access hotel services (cleaning, gym, cinema) and XXL common areas for working or socializing.",
+        "q3": "Why choose a residence over a private landlord?",
+        "a3": "For security and simplicity. You sign a standardized lease without abusive clauses. A manager is present on-site for your packages or technical issues. Plus, utilities are often 'all-inclusive' (water, electricity, internet), avoiding end-of-month surprises.",
+        "q4": "Are the displayed prices reliable?",
+        "a4": "Yes, we are directly connected with managers. The displayed price generally includes rent and rental charges. Always check the details on the listing: some 'Premium' services (parking, breakfast) may be extra.",
+        "q5": "Can I visit the housing before booking?",
+        "a5": "Absolutely. You can request a physical or virtual visit (video call) directly from the contact form. Many residences also offer immersive 3D tours to project yourself remotely.",
+        "q6": "What documents for my application?",
+        "a6": "Prepare the classics: ID, proof of schooling, and guarantor (tax notice, payslips). If you don't have a physical guarantor, we accept Visale or Garantme guarantees in most partner residences."
+    },
+    "Footer": {
+        "description": "The leading platform for finding verified student housing in France. Simple, secure, and no hidden fees.",
+        "cities": "Top Cities",
+        "types": "Housing Types",
+        "legal": "Information",
+        "terms": "Legal Notice",
+        "contact": "Contact"
+    },
+    "Common": {
+        "loading": "Loading..."
+    },
+    "Profile": {
+        "title": "My Profile & Folder",
+        "incompleteBadge": "Incomplete Profile",
+        "personalInfo": "Personal Information",
+        "firstName": "First Name",
+        "lastName": "Last Name",
+        "email": "Email",
+        "phone": "Phone",
+        "arrivalDate": "Desired Arrival Date",
+        "income": "Monthly Income",
+        "cafNumber": "CAF Number",
+        "notProvided": "Not provided",
+        "notProvidedFem": "Not provided",
+        "edit": "Edit my information",
+        "completeNow": "Complete my profile now",
+        "save": "Save my information",
+        "banner": {
+            "title": "Finalize your application",
+            "text": "Add your income and at least one guarantor to be able to apply.",
+            "cta": "Complete now"
+        },
+        "placeholders": {
+            "firstName": "Ex: Thomas",
+            "lastName": "Ex: Smith",
+            "phone": "+33 6 12 34 56 78",
+            "income": "0",
+            "caf": "Ex: 1234567 (Optional)"
+        },
+        "editTitle": "Edit my rental application",
+        "createTitle": "Create my tenant profile",
+        "description": "Complete your profile to maximize your chances with landlords. A complete file is processed 2x faster."
+    },
+    "Guarantors": {
+        "title": "My Guarantors",
+        "none": "No guarantor registered yet.",
+        "add": "Add a guarantor",
+        "physical": "Physical",
+        "organism": "Organization (Agency)",
+        "moralLabel": "Agency Guarantor",
+        "physicalLabel": "Physical Guarantor",
+        "organismPrefix": "Organization",
+        "fileNumber": "File No.",
+        "netIncome": "Net income",
+        "month": "mo",
+        "addBtn": "Add this guarantor",
+        "placeholders": {
+            "income": "Ex: 2500",
+            "firstName": "First Name",
+            "lastName": "Last Name",
+            "email": "Email",
+            "phone": "Phone",
+            "fileNumber": "Ex: 12345678"
+        },
+        "labels": {
+            "situation": "Professional Situation",
+            "relationship": "Relationship",
+            "organismName": "Guarantor Organization",
+            "id": "File Number / Unique ID",
+            "incomeIndicative": "Indicative Net Monthly Income"
+        },
+        "enums": {
+            "CDI": "Permanent Contract (CDI)",
+            "CDD": "Fixed-term Contract (CDD)",
+            "FONCTIONNAIRE": "Civil Servant",
+            "RETRAITE": "Retired",
+            "INDEPENDANT": "Freelance/Independent",
+            "AUTRE": "Other",
+            "PERE": "Father",
+            "MERE": "Mother",
+            "FRERE_SOEUR": "Brother / Sister",
+            "AUTRE_FAMILLE": "Other Family",
+            "AMI": "Friend",
+            "VISALE": "Visale Guarantee",
+            "GARANTME": "GarantMe",
+            "UNCLE": "Unkle",
+            "CAUTIONEO": "Cautioneo",
+            "AUTRE_ORGANISM": "Other Organization"
+        }
+    },
+    "Subscription": {
+        "hello": "Hello {name},",
+        "interested": "Interested in this unit?",
+        "ready": "Your file is ready to be sent.",
+        "deposit": "Submit your application in 2 minutes.",
+        "free": "100% Free Service",
+        "guarantee": "Complete Application Guarantee",
+        "verified": "Verified Profile",
+        "loading": "Loading...",
+        "sendOneClick": "Send in 1 click 🚀",
+        "submit": "Submit my application 📝",
+        "finalize": "Finalize my profile ⚠️",
+        "createAccountDesc": "You will need to create an account to track your application.",
+        "incompleteBanner": "Incomplete Profile: Add your income and guarantors to apply."
+    },
+    "UserMenu": {
+        "connectedAs": "Logged in as",
+        "completeProfile": "Complete my profile",
+        "dashboard": "Dashboard",
+        "logout": "Logout",
+        "favorites": "My Favorites",
+        "applications": "My Applications"
+    },
+    "AccountSidebar": {
+        "title": "My Space",
+        "profile": "My Profile",
+        "favorites": "My Favorites",
+        "applications": "My Applications",
+        "logout": "Logout"
+    }
+}

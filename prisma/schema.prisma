@@ -1,0 +1,341 @@
+generator client {
+  provider = "prisma-client-js"
+  engineType = "binary"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Enums
+enum AvailabilityEnum {
+  IMMEDIATE
+  LT_30D
+  UNKNOWN
+  NOT_AVAILABLE
+}
+
+enum UnitTypeEnum {
+  STUDIO
+  COLOCATION
+  COLIVING
+  UNKNOWN
+}
+
+enum ResidenceStatus {
+  NON_PARTNER
+  PARTNER_EMAIL
+  PARTNER_SLA
+}
+
+// 1. STAGING
+model StagingUnit {
+  id              String           @id @default(uuid())
+  importBatchId   String          @map("import_batch_id")
+  sourceId        String          @map("source_id")
+  rawData         Json            @map("raw_data")
+  
+  // Normalized fields
+  externalId      String?         @map("external_id")
+  name            String?         @map("name")
+  address         String?         @map("address")
+  cityRaw         String?         @map("city_raw")
+  cityNormalized  String          @map("city_normalized")
+  
+  priceMin        Int             @map("price_min")
+  surfaceMin      Decimal?        @map("surface_min") @db.Decimal(5, 2)
+  unitType        UnitTypeEnum?   @default(UNKNOWN) @map("unit_type")
+  availability    AvailabilityEnum? @default(UNKNOWN) @map("availability")
+  
+  url             String          @map("url")
+  createdAt       DateTime?       @default(now()) @map("created_at")
+
+  @@map("staging_units")
+}
+
+// 2. CANONICAL RESIDENCES
+model CanonResidence {
+  id              String           @id @default(uuid())
+  slug            String           @unique
+  name            String
+  address         String?
+  cityNormalized  String          @map("city_normalized")
+  sourceId        String          @map("source_id")
+  url             String
+  trustScore      Int?            @default(50) @map("trust_score")
+  
+  // Strict Business Logic Fields
+  status          ResidenceStatus @default(NON_PARTNER)
+  leadCapDaily    Int?            @map("lead_cap_daily")
+  leadCapWeekly   Int?            @map("lead_cap_weekly")
+  leadsSentToday  Int             @default(0) @map("leads_sent_today")
+  leadsSentThisWeek Int           @default(0) @map("leads_sent_this_week")
+  slaDays         Int?            @map("sla_days")
+
+  // Configuration
+  notificationEmail String?       @map("notification_email")
+  leadPrice       Int?            @map("lead_price") // Null = Inherit from PartnerConfig, 0 = Free
+  
+  createdAt       DateTime?       @default(now()) @map("created_at")
+  updatedAt       DateTime?       @default(now()) @updatedAt @map("updated_at")
+  
+  units           CanonUnit[]
+
+  @@unique([sourceId, url])
+  @@map("canon_residences")
+}
+
+model PartnerConfig {
+  sourceId        String   @id @map("source_id")
+  defaultLeadPrice Int      @default(0) @map("default_lead_price")
+  defaultNotificationEmail String? @map("default_notification_email")
+  
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("partner_configs")
+}
+
+// 3. CANONICAL UNITS
+model CanonUnit {
+  id              String           @id @default(uuid())
+  residenceId     String          @map("residence_id")
+  residence       CanonResidence   @relation(fields: [residenceId], references: [id], onDelete: Cascade)
+  
+  type            UnitTypeEnum
+  price           Int
+  surface         Decimal?         @db.Decimal(5, 2)
+  availability    AvailabilityEnum
+  
+  updatedAt       DateTime?       @default(now()) @updatedAt @map("updated_at")
+  
+  favorites       Favorite[]
+
+  @@map("canon_units")
+}
+
+// 4. STATS
+model CityStatsDaily {
+  cityNormalized  String          @map("city_normalized")
+  unitType        UnitTypeEnum    @map("unit_type")
+  date            DateTime        @default(now()) @db.Date
+  
+  medianPrice     Int?            @map("median_price")
+  medianSurface   Int?            @map("median_surface")
+  medianPriceM2   Int?            @map("median_price_m2")
+  countUnits      Int?            @map("count_units")
+
+  @@id([cityNormalized, unitType, date])
+  @@map("city_stats_daily")
+}
+// ... existing models ...
+
+// 5. APPLICATIVE: PROFILES & AUTH
+model Profile {
+  id            String    @id @default(uuid()) // In Supabase this will be linked to auth.users.id manually or via triggers
+  // Note: For prisma with supabase auth, we often map id to uuid. 
+  // However, since auth.users is distinct, we use this table for app data.
+  
+  firstName     String?   @map("first_name")
+  lastName      String?   @map("last_name")
+  email         String?   // Cached for convenience
+  phone         String?
+  countryCode   String?   @default("+33") @map("country_code")
+  birthdate     DateTime? @db.Date 
+  status        String?   // STUDENT, ACTIVE, OTHER (Enum stored as string)
+  
+  // Housing Preferences (Required for Subscription)
+  arrivalDate   DateTime? @map("arrival_date") @db.Date
+  
+  // Financial & Status
+  income        Int?      @default(0) // Monthly income in cents or euros? Let's assume Euros for MVP simplicity or Int for cents
+  cafNumber     String?   @map("caf_number")
+  
+  // Guarantor Info (Simplified boolean, detailed in Guarantor model)
+  hasGuarantor  Boolean?  @map("has_guarantor")
+  
+  guarantors    Guarantor[]
+
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  requests      SubscriptionRequest[]
+  favorites     Favorite[]
+
+  @@map("profiles")
+}
+
+model Guarantor {
+  id          String   @id @default(uuid())
+  profileId   String   @map("profile_id")
+  profile     Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  firstName   String   @map("first_name")
+  lastName    String   @map("last_name")
+  email       String?
+  phone       String?
+  
+  // Financial
+  income      Int?     // Monthly income
+  relationship String? // FATHER, MOTHER, OTHER, VISALE, GARANTME
+  situation   String?  // CDI, CDD, RETRAITE, ...
+
+  // Organism Specific
+  type        String   @default("PHYSICAL") // PHYSICAL, ORGANISM
+  fileNumber  String?  @map("file_number")
+
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("guarantors")
+}
+
+// 6. APPLICATIVE: INTENTS (Drafts)
+model SubscriptionIntent {
+  id          String   @id @default(uuid())
+  sessionId   String   @map("session_id")
+  payload     Json     @map("payload_json") // Stores { unitId, returnTo, ... }
+  expiresAt   DateTime @map("expires_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("subscription_intents")
+}
+
+// 7. APPLICATIVE: REQUESTS (Leads)
+model SubscriptionRequest {
+  id            String   @id @default(uuid())
+  userId        String   @map("user_id")
+  profile       Profile  @relation(fields: [userId], references: [id])
+  
+  unitId        String   @map("unit_id")
+  residenceName String?  @map("residence_name")
+  status        String   @default("PENDING") // PENDING, SENT, ACCEPTED, REJECTED
+  payload       Json?    @map("payload_json") // Snapshot of specific request details if any
+  
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@map("subscription_requests")
+}
+
+// 8. APPLICATIVE: FAVORITES
+model Favorite {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  profile   Profile   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  unitId    String    @map("unit_id")
+  unit      CanonUnit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@unique([userId, unitId])
+  @@map("favorites")
+}
+
+// 9. TRACKING
+model Event {
+  id          String   @id @default(uuid())
+  eventType   String   @map("event_type")
+  userId      String?  @map("user_id") @db.Uuid
+  sessionId   String   @map("session_id")
+  residenceId String?  @map("residence_id") @db.Uuid
+  city        String?
+  metadata    Json?    @default("{}")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([eventType])
+  @@index([residenceId])
+  @@index([createdAt])
+  @@map("events")
+}
+
+// 10. CMS: CITY CONTENT
+model CityContent {
+  slug            String   @id @map("slug") // cityNormalized
+  
+  // Header
+  title           String?
+  subtitle        String?
+  intro           String?  @db.Text
+  heroImageUrl    String?  @map("hero_image_url")
+  
+  // Structured Data
+  price           Int?     @default(500) // Display price
+  
+  // Rich Data (stored as JSON to match current Structure)
+  transportJson     Json?    @map("transport_json")      // { summary, lines: [], price }
+  livingCostJson    Json?    @map("living_cost_json")    // { rent, food, transport, extras }
+  neighborhoodsJson Json?    @map("neighborhoods_json")  // [{ name, description, vibe }]
+  faqJson           Json?    @map("faq_json")            // [{ question, answer }]
+  
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("city_contents")
+}
+
+// 11. CMS: BLOG
+enum PostStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+model BlogCategory {
+  id          String   @id @default(uuid())
+  slug        String   @unique
+  name        String
+  description String?
+  
+  posts       BlogPost[]
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
+  
+  @@map("blog_categories")
+}
+
+model BlogAuthor {
+  id          String   @id @default(uuid())
+  name        String
+  bio         String?
+  role        String?
+  avatarUrl   String?  @map("avatar_url")
+  
+  posts       BlogPost[]
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
+  
+  @@map("blog_authors")
+}
+
+model BlogPost {
+  id            String      @id @default(uuid())
+  slug          String      @unique
+  title         String
+  excerpt       String?     @db.Text
+  content       String?     @db.Text // Markdown or HTML
+  coverImageUrl String?     @map("cover_image_url")
+  
+  status        PostStatus  @default(DRAFT)
+  publishedAt   DateTime?   @map("published_at")
+  
+  // Relations
+  categoryId    String?     @map("category_id")
+  category      BlogCategory? @relation(fields: [categoryId], references: [id])
+  
+  authorId      String?     @map("author_id")
+  author        BlogAuthor? @relation(fields: [authorId], references: [id])
+  
+  // SEO
+  seoJson       Json?       @map("seo_json")
+  
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @default(now()) @updatedAt @map("updated_at")
+  
+  @@index([status])
+  @@index([publishedAt])
+  @@map("blog_posts")
+}
