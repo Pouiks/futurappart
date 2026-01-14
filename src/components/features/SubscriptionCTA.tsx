@@ -14,9 +14,10 @@ interface SubscriptionCTAProps {
     firstName?: string;
     missingFields?: string[];
     isAlreadySent?: boolean;
+    isDemo?: boolean;
 }
 
-export const SubscriptionCTA = ({ unit, user, locale, isProfileComplete = false, firstName, missingFields = [], isAlreadySent = false }: SubscriptionCTAProps) => {
+export const SubscriptionCTA = ({ unit, user, locale, isProfileComplete = false, firstName, missingFields = [], isAlreadySent = false, isDemo = false }: SubscriptionCTAProps) => {
     const router = useRouter();
     const t = useTranslations('Subscription');
 
@@ -26,6 +27,13 @@ export const SubscriptionCTA = ({ unit, user, locale, isProfileComplete = false,
 
     const handleSubscribe = async () => {
         if (isSent) return;
+
+        // Demo Mode Interception
+        if (isDemo) {
+            toast.info("Mode Démo : Cette fonctionnalité est simulée.");
+            return;
+        }
+
         setLoading(true);
 
         if (user && !isProfileComplete) {
@@ -115,7 +123,7 @@ export const SubscriptionCTA = ({ unit, user, locale, isProfileComplete = false,
                         ? "Le propriétaire a reçu votre dossier."
                         : (user ? (
                             isProfileComplete
-                                ? "Votre dossier est prêt à être envoyé."
+                                ? (isDemo ? "Ce logement est une démonstration." : "Votre dossier est prêt à être envoyé.")
                                 : "Finalisez votre dossier pour postuler."
                         ) : t('deposit'))
                     }
@@ -157,12 +165,14 @@ export const SubscriptionCTA = ({ unit, user, locale, isProfileComplete = false,
 
                 <button
                     onClick={handleSubscribe}
-                    disabled={loading || isSent}
+                    disabled={loading || isSent || (isDemo && isProfileComplete)}
                     className={`w-full font-bold py-4 rounded-xl shadow-lg transform transition-all text-lg flex items-center justify-center gap-2 ${isSent
                         ? "bg-green-500 text-white cursor-default shadow-none"
-                        : (user && !isProfileComplete
-                            ? "bg-orange-500 hover:bg-orange-600 text-white active:scale-95"
-                            : "bg-blue-600 hover:bg-blue-700 text-white active:scale-95")
+                        : (isDemo && isProfileComplete
+                            ? "bg-slate-100 text-slate-500 cursor-not-allowed shadow-none border border-slate-200"
+                            : (user && !isProfileComplete
+                                ? "bg-orange-500 hover:bg-orange-600 text-white active:scale-95"
+                                : "bg-blue-600 hover:bg-blue-700 text-white active:scale-95"))
                         }`}
                 >
                     {loading ? t('loading') : (
@@ -178,7 +188,7 @@ export const SubscriptionCTA = ({ unit, user, locale, isProfileComplete = false,
                                     <span className="text-sm bg-white/20 px-2 py-0.5 rounded ml-1">1 min</span>
                                 </>
                             ) :
-                                (user ? t('sendOneClick') : t('submit'))
+                                (isDemo && isProfileComplete ? "En attente de partenariat !" : (user ? t('sendOneClick') : t('submit')))
                         )
                     )}
                 </button>

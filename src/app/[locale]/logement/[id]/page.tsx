@@ -339,6 +339,7 @@ export default async function LogementPage({ params }: PageProps) {
                             firstName={firstName}
                             missingFields={missingFields}
                             isAlreadySent={!!existingRequest}
+                            isDemo={isDemo}
                         />
                         <div className="mt-6 pt-6 border-t border-gray-100 bg-white p-6 rounded-3xl shadow-sm">
                             <h3 className="font-bold text-gray-900 mb-3 text-sm">Pourquoi réserver ici ?</h3>
