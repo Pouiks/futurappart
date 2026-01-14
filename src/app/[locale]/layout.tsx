@@ -68,7 +68,9 @@ export default async function RootLayout({
   let counts = null;
   let alerts = null;
 
-  if (user) {
+  const isDemo = process.env.DEMO_MODE === 'true';
+
+  if (user && !isDemo) {
     const [favorites, applications, profile] = await Promise.all([
       prisma.favorite.count({ where: { userId: user.id } }),
       prisma.subscriptionRequest.count({ where: { userId: user.id } }),
