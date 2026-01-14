@@ -73,48 +73,53 @@ export default async function LogementPage({ params }: PageProps) {
     let existingRequest: any = null;
 
     if (user) {
-        const profile = await prisma.profile.findUnique({
-            where: { id: user.id },
-            include: { dossierPersons: true }
-        });
+        try {
+            const profile = await prisma.profile.findUnique({
+                where: { id: user.id },
+                include: { dossierPersons: true }
+            });
 
-        if (!isDemo) {
-            const [favorite, request] = await Promise.all([
-                prisma.favorite.findUnique({
-                    where: {
-                        userId_unitId: {
+            if (!isDemo) {
+                const [favorite, request] = await Promise.all([
+                    prisma.favorite.findUnique({
+                        where: {
+                            userId_unitId: {
+                                userId: user.id,
+                                unitId: id
+                            }
+                        }
+                    }),
+                    prisma.subscriptionRequest.findFirst({
+                        where: {
                             userId: user.id,
                             unitId: id
                         }
-                    }
-                }),
-                prisma.subscriptionRequest.findFirst({
-                    where: {
-                        userId: user.id,
-                        unitId: id
-                    }
-                })
-            ]);
+                    })
+                ]);
 
-            isFavorite = !!favorite;
-            existingRequest = request;
-        }
-
-        if (profile) {
-            // Determine First Name
-            if (profile.firstName) firstName = profile.firstName;
-            else if (user.user_metadata?.first_name) firstName = user.user_metadata.first_name;
-
-            // Check for Guarantor in Dossier (New System)
-            const hasGuarantor = profile.dossierPersons?.some(p => p.role === 'GUARANTOR');
-            if (!hasGuarantor) missingFields.push('garants');
-
-            // Missing Fields Calculation
-            if ((!profile.income || profile.income <= 0) && !hasGuarantor) {
-                missingFields.push('revenus');
+                isFavorite = !!favorite;
+                existingRequest = request;
             }
 
-            isProfileComplete = missingFields.length === 0;
+            if (profile) {
+                // Determine First Name
+                if (profile.firstName) firstName = profile.firstName;
+                else if (user.user_metadata?.first_name) firstName = user.user_metadata.first_name;
+
+                // Check for Guarantor in Dossier (New System)
+                const hasGuarantor = profile.dossierPersons?.some(p => p.role === 'GUARANTOR');
+                if (!hasGuarantor) missingFields.push('garants');
+
+                // Missing Fields Calculation
+                if ((!profile.income || profile.income <= 0) && !hasGuarantor) {
+                    missingFields.push('revenus');
+                }
+
+                isProfileComplete = missingFields.length === 0;
+            }
+        } catch (error) {
+            console.error("[UNIT] Failed to fetch user profile/data, continuing in guest mode:", error);
+            // Non-blocking error: User sees the page but features needing profile (ex: favorites) might be limited
         }
     }
 

@@ -22,19 +22,35 @@ async function getDossierData() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
 
-    const profile = await prisma.profile.findUnique({
-        where: { id: user.id },
-        include: {
-            dossierPersons: {
-                include: {
-                    documents: true
+    try {
+        const profile = await prisma.profile.findUnique({
+            where: { id: user.id },
+            include: {
+                dossierPersons: {
+                    include: {
+                        documents: true
+                    }
                 }
             }
-        }
-    });
-
-    console.log("DossierPage: Fetched Profile:", JSON.stringify(profile, null, 2));
-    return { user, profile };
+        });
+        console.log("DossierPage: Fetched Profile:", JSON.stringify(profile, null, 2));
+        return { user, profile };
+    } catch (error) {
+        console.error("DossierPage: DB Init Error, using fallback:", error);
+        // Fallback for Demo Mode / DB Failure
+        return {
+            user,
+            profile: {
+                id: user.id,
+                email: user.email,
+                firstName: "Mode",
+                lastName: "Démo",
+                income: 0,
+                status: 'STUDENT',
+                dossierPersons: []
+            }
+        };
+    }
 }
 
 export default async function DossierPage() {
