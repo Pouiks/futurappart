@@ -7,6 +7,20 @@ import { NoGuarantorSection } from '@/components/landing/NoGuarantorSection';
 import { prisma } from '@/lib/db';
 
 async function getAvailableCities() {
+  const isDemo = process.env.DEMO_MODE === 'true';
+
+  if (isDemo) {
+    // Return hardcoded cities for demo mode
+    return [
+      { slug: 'paris', title: 'Paris' },
+      { slug: 'lyon', title: 'Lyon' },
+      { slug: 'toulouse', title: 'Toulouse' },
+      { slug: 'bordeaux', title: 'Bordeaux' },
+      { slug: 'lille', title: 'Lille' },
+      { slug: 'nantes', title: 'Nantes' }
+    ];
+  }
+
   const cities = await prisma.canonResidence.findMany({
     select: {
       cityNormalized: true
