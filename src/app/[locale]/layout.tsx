@@ -71,25 +71,30 @@ export default async function RootLayout({
   const isDemo = process.env.DEMO_MODE === 'true';
 
   if (user && !isDemo) {
-    const [favorites, applications, profile] = await Promise.all([
-      prisma.favorite.count({ where: { userId: user.id } }),
-      prisma.subscriptionRequest.count({ where: { userId: user.id } }),
-      prisma.profile.findUnique({
-        where: { id: user.id },
-        include: { guarantors: true } // Fetch guarantors to check count
-      })
-    ]);
+    try {
+      const [favorites, applications, profile] = await Promise.all([
+        prisma.favorite.count({ where: { userId: user.id } }),
+        prisma.subscriptionRequest.count({ where: { userId: user.id } }),
+        prisma.profile.findUnique({
+          where: { id: user.id },
+          include: { guarantors: true } // Fetch guarantors to check count
+        })
+      ]);
 
-    // Check completion: Needs Income > 0 AND at least 1 Guarantor
-    const isProfileComplete = !!(
-      profile?.income &&
-      profile.income > 0 &&
-      profile.guarantors &&
-      profile.guarantors.length > 0
-    );
+      // Check completion: Needs Income > 0 AND at least 1 Guarantor
+      const isProfileComplete = !!(
+        profile?.income &&
+        profile.income > 0 &&
+        profile.guarantors &&
+        profile.guarantors.length > 0
+      );
 
-    counts = { favorites, applications };
-    alerts = { incompleteProfile: !isProfileComplete };
+      counts = { favorites, applications };
+      alerts = { incompleteProfile: !isProfileComplete };
+    } catch (e) {
+      console.error("[LAYOUT] Failed to fetch user data, likely DB connection issue. Falling back to safe mode.", e);
+      // Fail silently to keep the app running in mock/degraded mode
+    }
   }
 
   return (
