@@ -106,7 +106,7 @@ export default async function LogementPage({ params }: PageProps) {
 
     }
 
-    const isDemo = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
+    const isDemo = process.env.DEMO_MODE === 'true';
     const unit = isDemo
         ? demoUnits.find(u => u.id === id)
         : await prisma.canonUnit.findUnique({
@@ -117,7 +117,7 @@ export default async function LogementPage({ params }: PageProps) {
     if (!unit) notFound();
 
     // Fetch Stats for accurate scoring
-    const cityStats = await prisma.cityStatsDaily.findFirst({
+    const cityStats = isDemo ? null : await prisma.cityStatsDaily.findFirst({
         where: {
             cityNormalized: unit.residence.cityNormalized,
             unitType: unit.type as any

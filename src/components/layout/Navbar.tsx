@@ -114,13 +114,6 @@ export const Navbar = ({ counts, alerts }: NavbarProps) => {
                                         <div className="text-sm text-gray-600 leading-snug">Solutions Visale, Garantme...</div>
                                     </div>
                                 </Link>
-
-                                <div className="h-px bg-gray-100 my-1 mx-2"></div>
-
-                                <Link href="/comment-ca-marche" className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 transition-colors">
-                                    <HelpCircle className="w-5 h-5 text-gray-500" />
-                                    <span className="text-base font-bold text-gray-700">{t('howItWorks')}</span>
-                                </Link>
                             </div>
                         </div>
                     </div>
