@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { getAdminPosts, bootstrapBlog } from './actions';
 import Link from 'next/link';
 import { Edit, Plus, FileText, Calendar } from 'lucide-react';

@@ -3,6 +3,8 @@ import { Calendar, User, Building, Mail, Phone, ChevronRight, ChevronDown } from
 import LeadFilters from './LeadFilters';
 import RelaunchButton from './RelaunchButton';
 
+export const dynamic = 'force-dynamic';
+
 export default async function LeadsPage({ searchParams }: { searchParams?: Promise<{ start?: string, end?: string, partner?: string, search?: string }> }) {
 
     const resolvedParams = await searchParams;

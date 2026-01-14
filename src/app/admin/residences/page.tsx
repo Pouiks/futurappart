@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { searchResidences, getPartnerConfigsSource, getBrandsList } from './actions';
 import ResidenceList from './ResidenceList';
 import { Building } from 'lucide-react';

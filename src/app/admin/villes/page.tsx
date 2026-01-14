@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { getAllCitiesStatus } from './actions';
 import { MapPin, Edit, CheckCircle, XCircle } from 'lucide-react';
 import Link from 'next/link';
