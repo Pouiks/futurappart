@@ -171,6 +171,7 @@ export const CityResults = ({ candidates, city }: CityResultsProps) => {
                                     setHoveredUnitId(id);
                                     scrollToTarget(`unit-${id}`);
                                 }}
+                                onMarkerHover={(id) => setHoveredUnitId(id)}
                             />
                         )}
                     </div>
