@@ -34,9 +34,14 @@ export default async function AccountLayout({
 
     let favoritesCount = 0;
     if (user) {
-        favoritesCount = await prisma.favorite.count({
-            where: { userId: user.id }
-        });
+        try {
+            favoritesCount = await prisma.favorite.count({
+                where: { userId: user.id }
+            });
+        } catch (error) {
+            console.error("[ACCOUNT LAYOUT] Failed to fetch favorites count:", error);
+            // Fail silently -> favorites count = 0
+        }
     }
 
     return (
