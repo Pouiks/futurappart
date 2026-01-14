@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma'; // Assuming this exists
+import { prisma } from '@/lib/db';
 import { DossierEngine } from '@/core/dossier/engine';
 
 const engine = new DossierEngine();
