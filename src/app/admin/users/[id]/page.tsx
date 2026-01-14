@@ -3,8 +3,10 @@ import { Mail, Phone, MapPin, Calendar, Clock, Eye, FileText, CheckCircle, XCirc
 import Link from 'next/link';
 import { DeleteRequestButton } from '@/components/admin/DeleteRequestButton';
 
-export default async function UserDetailPage({ params }: { params: Promise<{ id: string }> }) {
-    const { id } = await params;
+export const dynamic = 'force-dynamic';
+
+export default async function UserDetailPage({ params }: { params: { id: string } }) {
+    const { id } = params;
 
     const profile = await prisma.profile.findUnique({
         where: { id },

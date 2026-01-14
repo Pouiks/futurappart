@@ -2,6 +2,8 @@ import { prisma } from '@/lib/db';
 import { Eye, FileText, User } from 'lucide-react';
 import Link from 'next/link';
 
+export const dynamic = 'force-dynamic'; // Don't prerender - requires DB at runtime
+
 export default async function UsersPage() {
     // Fetch users with stats
     // Note: Profile table is the core user table
