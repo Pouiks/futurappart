@@ -52,8 +52,14 @@ export async function POST(request: Request) {
 
 
         // 2. Fetch Candidates (Demo Mode Support)
-        // If NEXT_PUBLIC_DEMO_MODE is true, use static mock data instead of DB query.
-        const isDemo = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
+        // Use DEMO_MODE (server-side variable, not NEXT_PUBLIC_*)
+        const isDemoRaw = process.env.DEMO_MODE;
+        const isDemo = isDemoRaw === 'true';
+
+        console.log(`[SEARCH] Normalized City: '${cityNormalized}'`);
+        console.log(`[SEARCH] DEMO_MODE Raw: '${isDemoRaw}', Bool: ${isDemo}`);
+        console.log(`[SEARCH] Criteria:`, JSON.stringify(criteria));
+
         let candidates;
         if (isDemo) {
             // Simple filter on mock units matching criteria
@@ -65,8 +71,6 @@ export async function POST(request: Request) {
                 return matchesCity && matchesPrice && matchesSurface && matchesType;
             });
         } else {
-            console.log(`[SEARCH] Normalized City: '${cityNormalized}'`);
-            console.log(`[SEARCH] Criteria:`, JSON.stringify(criteria));
             candidates = await prisma.canonUnit.findMany({
                 where: {
                     residence: { cityNormalized: cityNormalized },

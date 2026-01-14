@@ -12,6 +12,7 @@ import { StickySubNav } from '@/components/features/StickySubNav';
 import { SubscriptionCTA } from '@/components/features/SubscriptionCTA';
 import { ImageGallery } from '@/components/features/ImageGallery';
 import ResidenceTracker from '@/components/tracking/ResidenceTracker';
+import { demoUnits } from '@/lib/demoData';
 
 interface PageProps {
     params: Promise<{ id: string; locale: string }>;
@@ -105,10 +106,13 @@ export default async function LogementPage({ params }: PageProps) {
 
     }
 
-    const unit = await prisma.canonUnit.findUnique({
-        where: { id },
-        include: { residence: true }
-    });
+    const isDemo = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
+    const unit = isDemo
+        ? demoUnits.find(u => u.id === id)
+        : await prisma.canonUnit.findUnique({
+            where: { id },
+            include: { residence: true }
+        });
 
     if (!unit) notFound();
 
@@ -116,7 +120,7 @@ export default async function LogementPage({ params }: PageProps) {
     const cityStats = await prisma.cityStatsDaily.findFirst({
         where: {
             cityNormalized: unit.residence.cityNormalized,
-            unitType: unit.type
+            unitType: unit.type as any
         },
         orderBy: { date: 'desc' }
     });

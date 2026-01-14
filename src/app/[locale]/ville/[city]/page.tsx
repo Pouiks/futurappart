@@ -9,6 +9,15 @@ import { Link } from '@/i18n/navigation';
 import { CityResults } from '@/components/features/CityResults';
 
 import { CITY_CONTENT } from '@/data/cityContent';
+import { demoUnits, generateMockUnits } from '@/lib/demoData';
+
+// ...
+
+
+
+
+
+
 
 // 1. Generate Metadata dynamically
 export async function generateMetadata({ params }: { params: Promise<{ city: string }> }): Promise<Metadata> {
@@ -41,10 +50,17 @@ export default async function CityPage({
     const cityCapitalized = city.charAt(0).toUpperCase() + city.slice(1);
     const t = await getTranslations('CityPage');
 
-    // 1. Try DB Content (CMS)
-    const dbContent = await prisma.cityContent.findUnique({
-        where: { slug: cityNormalized }
-    });
+    const isDemoRaw = process.env.DEMO_MODE;
+    // Handle potential quoting issues in .env files
+    const isDemo = isDemoRaw === 'true';
+
+    // 1. Try DB Content (CMS) - ONLY if not in demo mode
+    let dbContent = null;
+    if (!isDemo) {
+        dbContent = await prisma.cityContent.findUnique({
+            where: { slug: cityNormalized }
+        });
+    }
 
     // 2. Fallback to Hardcoded (Legacy)
     const legacyContent = CITY_CONTENT[cityNormalized] || CITY_CONTENT['default'];
@@ -87,20 +103,52 @@ export default async function CityPage({
         typeFilter.push(UnitTypeEnum.COLOCATION);
     }
 
+
+
     // 3. Fetch Data (SSR)
-    const candidates = await prisma.canonUnit.findMany({
-        where: {
-            residence: { cityNormalized: cityNormalized },
-            price: {
-                gt: 0,
-                lte: budgetMax
+    // isDemo is already defined above
+    console.log(`[CITY] Fetching for ${cityNormalized}, Env Raw: '${isDemoRaw}', Bool: ${isDemo}`);
+
+    let candidates;
+
+    if (isDemo) {
+        // Try to filter existing static mocks
+        const staticMocks = demoUnits
+            .filter(u => u.residence.cityNormalized === cityNormalized);
+
+        // If no static mocks for this city (or not enough), generate them dynamically!
+        if (staticMocks.length < 5) {
+            console.log(`[CITY] Generating dynamic mocks for ${cityNormalized}`);
+            const dynamicMocks = generateMockUnits(cityNormalized, 20); // Generate 20 units
+            candidates = [...staticMocks, ...dynamicMocks];
+        } else {
+            candidates = staticMocks;
+        }
+
+        // Apply filters locally on the mocks
+        candidates = candidates
+            .filter(u =>
+                u.price > 0 &&
+                u.price <= budgetMax &&
+                typeFilter.includes(u.type as UnitTypeEnum)
+            )
+            .sort((a, b) => a.price - b.price);
+
+    } else {
+        candidates = await prisma.canonUnit.findMany({
+            where: {
+                residence: { cityNormalized: cityNormalized },
+                price: {
+                    gt: 0,
+                    lte: budgetMax
+                },
+                type: { in: typeFilter }
             },
-            type: { in: typeFilter }
-        },
-        include: { residence: true },
-        take: 50,
-        orderBy: { price: 'asc' }
-    });
+            include: { residence: true },
+            take: 50,
+            orderBy: { price: 'asc' }
+        });
+    }
 
     const safeNum = (val: any) => (val && typeof val.toNumber === 'function') ? val.toNumber() : val;
 
@@ -145,7 +193,7 @@ export default async function CityPage({
                     <>
                         <CityResults
                             city={city}
-                            candidates={candidates.map((u, idx) => ({
+                            candidates={candidates.map((u: any, idx: number) => ({
                                 id: u.id,
                                 residenceName: u.residence.name,
                                 price: u.price,
@@ -200,7 +248,7 @@ export default async function CityPage({
                                         </h3>
                                         <p className="text-gray-700 mb-4">{cityData.transport.summary}</p>
                                         <div className="flex flex-wrap gap-2 mb-4">
-                                            {cityData.transport.lines.map((line, i) => (
+                                            {cityData.transport.lines.map((line: string, i: number) => (
                                                 <span key={i} className="px-3 py-1 bg-white border border-green-200 rounded-full text-sm font-bold text-green-800 shadow-sm">
                                                     {line}
                                                 </span>
@@ -224,8 +272,9 @@ export default async function CityPage({
                                     <div>
                                         <h3 className="text-xl font-bold text-gray-900 mb-4">Quartiers Étudiants</h3>
                                         <div className="grid gap-4">
-                                            {cityData.neighborhood_details.map((n, i) => (
+                                            {cityData.neighborhood_details.map((n: any, i: number) => (
                                                 <div key={i} className="group p-4 bg-white border border-gray-100 rounded-xl hover:shadow-md transition-all">
+
                                                     <div className="flex justify-between items-start mb-1">
                                                         <h4 className="font-bold text-gray-800 group-hover:text-blue-600 transition-colors">{n.name}</h4>
                                                         <span className={`text-xs px-2 py-0.5 rounded-full font-bold
@@ -245,7 +294,7 @@ export default async function CityPage({
                                     <div>
                                         <h3 className="text-xl font-bold text-gray-900 mb-4">Questions Fréquentes</h3>
                                         <div className="space-y-3">
-                                            {cityData.faq.map((item, i) => (
+                                            {cityData.faq.map((item: any, i: number) => (
                                                 <details key={i} className="group bg-gray-50 rounded-xl">
                                                     <summary className="flex items-center justify-between p-4 cursor-pointer font-semibold text-gray-800 list-none">
                                                         <span>{item.question}</span>
