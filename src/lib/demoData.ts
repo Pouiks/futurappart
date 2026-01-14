@@ -78,3 +78,30 @@ export const generateMockUnits = (city: string, count: number = 20) => {
     }));
 };
 
+// Helper to get a specific demo unit by ID (handling both static and dynamic mocks)
+export const getDemoUnitById = (id: string) => {
+    // 1. Check static demos
+    const staticUnit = demoUnits.find(u => u.id === id);
+    if (staticUnit) return staticUnit;
+
+    // 2. Check dynamic mocks (format: mock-{city}-{index})
+    if (id.startsWith('mock-')) {
+        const parts = id.split('-');
+        // mock-lyon-1 -> parts=['mock', 'lyon', '1']
+        if (parts.length >= 3) {
+            const city = parts[1];
+            // We can just regenerate the specific unit or the batch (batch is safer for consistency logic)
+            // Ideally we'd just generate the one unit we need, but generateMockUnits is fast.
+            // Let's generate a batch large enough to include our index?
+            // Actually, the index 'i' in `generateMockUnits` goes up to count.
+            // If id is mock-lyon-1, i=1.
+            const index = parseInt(parts[2], 10);
+
+            // Generate mock array up to this index + 1 ensures it exists
+            const mocks = generateMockUnits(city, index + 5);
+            return mocks.find(u => u.id === id);
+        }
+    }
+
+    return null;
+};

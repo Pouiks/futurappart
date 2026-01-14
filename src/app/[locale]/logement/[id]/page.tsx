@@ -12,7 +12,7 @@ import { StickySubNav } from '@/components/features/StickySubNav';
 import { SubscriptionCTA } from '@/components/features/SubscriptionCTA';
 import { ImageGallery } from '@/components/features/ImageGallery';
 import ResidenceTracker from '@/components/tracking/ResidenceTracker';
-import { demoUnits } from '@/lib/demoData';
+import { demoUnits, getDemoUnitById } from '@/lib/demoData';
 
 interface PageProps {
     params: Promise<{ id: string; locale: string }>;
@@ -22,10 +22,19 @@ interface PageProps {
 // 1. Generate Metadata
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
     const { id } = await params;
-    const unit = await prisma.canonUnit.findUnique({
-        where: { id },
-        include: { residence: true }
-    });
+
+    // Check Demo Mode
+    const isDemo = process.env.DEMO_MODE === 'true';
+    let unit;
+
+    if (isDemo) {
+        unit = getDemoUnitById(id);
+    } else {
+        unit = await prisma.canonUnit.findUnique({
+            where: { id },
+            include: { residence: true }
+        });
+    }
 
     if (!unit) return { title: 'Logement introuvable' };
 
@@ -38,6 +47,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 // 2. Page Content
 export default async function LogementPage({ params }: PageProps) {
     const { id, locale } = await params;
+    const isDemo = process.env.DEMO_MODE === 'true';
 
     // Auth Session
     const cookieStore = await cookies();
@@ -63,52 +73,53 @@ export default async function LogementPage({ params }: PageProps) {
     let existingRequest: any = null;
 
     if (user) {
-        const [profile, favorite, req] = await Promise.all([
-            prisma.profile.findUnique({
-                where: { id: user.id },
-                include: { dossierPersons: true }
-            }),
-            prisma.favorite.findUnique({
-                where: {
-                    userId_unitId: {
+        const profile = await prisma.profile.findUnique({
+            where: { id: user.id },
+            include: { dossierPersons: true }
+        });
+
+        if (!isDemo) {
+            const [favorite, request] = await Promise.all([
+                prisma.favorite.findUnique({
+                    where: {
+                        userId_unitId: {
+                            userId: user.id,
+                            unitId: id
+                        }
+                    }
+                }),
+                prisma.subscriptionRequest.findFirst({
+                    where: {
                         userId: user.id,
                         unitId: id
                     }
-                }
-            }),
-            prisma.subscriptionRequest.findFirst({
-                where: {
-                    userId: user.id,
-                    unitId: id
-                }
-            })
-        ]);
+                })
+            ]);
 
-        existingRequest = req;
-
-        // Determine First Name
-        if (profile?.firstName) firstName = profile.firstName;
-        else if (user.user_metadata?.first_name) firstName = user.user_metadata.first_name;
-
-        // Check for Guarantor in Dossier (New System)
-        const hasGuarantor = profile?.dossierPersons?.some(p => p.role === 'GUARANTOR');
-        if (!hasGuarantor) missingFields.push('garants');
-
-        // Missing Fields Calculation
-        // Income is only strictly required > 0 if the user does NOT have a guarantor (e.g. Employee self-guaranteeing)
-        // If they have a guarantor (e.g. Student), 0 income is acceptable.
-        if ((!profile?.income || profile.income <= 0) && !hasGuarantor) {
-            missingFields.push('revenus');
+            isFavorite = !!favorite;
+            existingRequest = request;
         }
 
-        isProfileComplete = missingFields.length === 0;
-        isFavorite = !!favorite;
+        if (profile) {
+            // Determine First Name
+            if (profile.firstName) firstName = profile.firstName;
+            else if (user.user_metadata?.first_name) firstName = user.user_metadata.first_name;
 
+            // Check for Guarantor in Dossier (New System)
+            const hasGuarantor = profile.dossierPersons?.some(p => p.role === 'GUARANTOR');
+            if (!hasGuarantor) missingFields.push('garants');
+
+            // Missing Fields Calculation
+            if ((!profile.income || profile.income <= 0) && !hasGuarantor) {
+                missingFields.push('revenus');
+            }
+
+            isProfileComplete = missingFields.length === 0;
+        }
     }
 
-    const isDemo = process.env.DEMO_MODE === 'true';
     const unit = isDemo
-        ? demoUnits.find(u => u.id === id)
+        ? getDemoUnitById(id)
         : await prisma.canonUnit.findUnique({
             where: { id },
             include: { residence: true }
