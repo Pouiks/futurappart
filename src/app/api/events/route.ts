@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { trackEvent, EventType } from '@/lib/tracking';
+import { trackEvent } from '@/lib/tracking';
 import { z } from 'zod';
 import { cookies } from 'next/headers';
 
@@ -11,10 +11,10 @@ const EventSchema = z.object({
         'account_created',
         'request_sent',
         'partner_activated'
-    ] as [EventType, ...EventType[]]),
-    residenceId: z.string().optional().nullable(),
-    city: z.string().optional().nullable(),
-    metadata: z.record(z.any()).optional().default({}),
+    ]),
+    residenceId: z.string().optional(),
+    city: z.string().optional(),
+    metadata: z.record(z.any()).default({}),
     sessionId: z.string().optional(), // Can be passed explicitly or inferred
 });
 
@@ -38,8 +38,8 @@ export async function POST(request: Request) {
         await trackEvent({
             eventType: data.eventType,
             sessionId: sessionId,
-            residenceId: data.residenceId,
-            city: data.city,
+            residenceId: data.residenceId || undefined,
+            city: data.city || undefined,
             metadata: data.metadata,
         });
 
