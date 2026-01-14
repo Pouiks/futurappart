@@ -165,7 +165,7 @@ export default function AuthPage() {
                 <Link href="/" className="flex justify-center mb-8">
                     <Image
                         src="/futurappartlogo.png"
-                        alt="MonLogementEtudiant"
+                        alt="FuturAppart"
                         width={300}
                         height={100}
                         className="h-24 w-auto object-contain"

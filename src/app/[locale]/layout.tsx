@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "MonLogementEtudiant - Comparateur de Logement Étudiant 2025",
+  title: "Futurappart - Trouvez votre logement",
   description: "Trouvez votre logement étudiant idéal à Lyon, Bordeaux, Paris... Comparez les résidences et trouvez la meilleure offre sans frais cachés.",
   icons: {
     icon: [
