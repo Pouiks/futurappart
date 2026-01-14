@@ -42,44 +42,45 @@ export default function DossierBuilder({ userId, initialProfile, user }: Dossier
                     arrivalDate: p.arrivalDate ?? initialProfile?.arrivalDate,
                     birthDate: p.birthDate ?? initialProfile?.birthdate // Sync from Profile if missing
                 };
-            };
-        }
+            }
             return p;
+        });
     });
-});
 
-const [activeTab, setActiveTab] = useState<string>('');
-const [isCreating, setIsCreating] = useState(false);
+    const [activeTab, setActiveTab] = useState<string>('');
+    const [isCreating, setIsCreating] = useState(false);
 
-// Select first person on load if exists
-useEffect(() => {
-    if (persons.length > 0 && !activeTab) {
-        setActiveTab(persons[0].id);
-    }
-}, [persons.length, activeTab]); // Depend on length to avoid rapid switching if person obj changes
-
-// Sync with Server Data (Revalidation updates props)
-useEffect(() => {
-    if (initialProfile?.dossierPersons) {
-        const merged = initialProfile.dossierPersons.map((p: any) => {
-            if (p.role === 'APPLICANT') {
-                return {
-                    ...p,
-                    income: p.income ?? initialProfile.income,
-                    cafNumber: p.cafNumber ?? initialProfile.cafNumber,
-                    arrivalDate: p.arrivalDate ?? initialProfile.arrivalDate,
-                    birthDate: p.birthDate ?? initialProfile.birthdate // Sync from Profile if missing
-                };
-            };
+    // Select first person on load if exists
+    useEffect(() => {
+        if (persons.length > 0 && !activeTab) {
+            setActiveTab(persons[0].id);
         }
+    }, [persons.length, activeTab]); // Depend on length to avoid rapid switching if person obj changes
+
+    // Sync with Server Data (Revalidation updates props)
+    useEffect(() => {
+        if (initialProfile?.dossierPersons) {
+            const merged = initialProfile.dossierPersons.map((p: any) => {
+                if (p.role === 'APPLICANT') {
+                    return {
+                        ...p,
+                        income: p.income ?? initialProfile.income,
+                        cafNumber: p.cafNumber ?? initialProfile.cafNumber,
+                        arrivalDate: p.arrivalDate ?? initialProfile.arrivalDate,
+                        birthDate: p.birthDate ?? initialProfile.birthdate // Sync from Profile if missing
+                    };
+                }
                 return p;
-    });
+            });
 
-// Only update if actually different to avoid cycles? 
-// JSON stringify comparison is expensive but safe.
-// For now, trust standard behavior, but if loop persists, add deep check.
-setPersons(merged);
+            setPersons(merged);
         }
+
+        // Only update if actually different to avoid cycles? 
+        // JSON stringify comparison is expensive but safe.
+        // For now, trust standard behavior, but if loop persists, add deep check.
+        setPersons(merged);
+    }
     }, [initialProfile]);
 
 // Sync Applicant Contact Info with Profile (Auto-fill Name/Email/Phone from Auth if missing)
@@ -217,7 +218,9 @@ const handleUpdatePerson = (field: keyof DossierPerson | 'income', value: any) =
 const handleSave = async () => {
     if (!activePerson) return;
     try {
-        await upsertPerson(activePerson as any);
+        const result = await upsertPerson(activePerson as any);
+        if (result.error) throw new Error(result.error);
+
         toast.success("Modifications enregistrées");
         setUnsavedChanges(false);
     } catch (error) {
