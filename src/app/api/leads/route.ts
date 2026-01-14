@@ -95,27 +95,32 @@ export async function POST(request: Request) {
 
                 if (applicant) {
                     // 2. Prepare Documents (Generate Signed URLs)
-                    const documentLinks: any[] = [];
+                    const applicantDocs: any[] = [];
+                    const guarantorDocsMap = new Map<string, any[]>();
 
                     // Helper to process docs
-                    const processDocs = async (personName: string, docs: any[]) => {
+                    const processDocs = async (docs: any[]) => {
+                        const results: any[] = [];
                         for (const doc of docs) {
                             if (doc.status === 'VALID' || true) { // Send all uploaded docs? Or only Valid? Let's send all for now.
                                 const signedUrl = await getSignedDownloadUrl(doc.storagePath);
                                 if (signedUrl) {
-                                    documentLinks.push({
-                                        type: `${doc.type} (${personName})`,
+                                    results.push({
+                                        type: doc.type,
                                         filename: doc.filename,
                                         url: signedUrl
                                     });
                                 }
                             }
                         }
+                        return results;
                     };
 
-                    await processDocs('Candidat', applicant.documents);
+                    applicantDocs.push(...await processDocs(applicant.documents));
+
                     for (const g of guarantors) {
-                        await processDocs(`Garant (${g.lastName})`, g.documents);
+                        const gDocs = await processDocs(g.documents);
+                        guarantorDocsMap.set(g.id, gDocs);
                     }
 
                     // 3. Send Email
@@ -127,15 +132,16 @@ export async function POST(request: Request) {
                             email: profile.email || email,
                             phone: applicant.phone || phone,
                             situation: applicant.status,
-                            income: 0 // TODO: Add income to DossierPerson schema or Profile?
+                            income: 0, // TODO: Add income to DossierPerson schema or Profile?
+                            documents: applicantDocs
                         },
                         guarantors: guarantors.map((g: any) => ({
                             firstName: g.firstName,
                             lastName: g.lastName,
                             type: g.guarantorType || 'PHYSIQUE',
-                            income: 0
+                            income: 0,
+                            documents: guarantorDocsMap.get(g.id) || []
                         })),
-                        documents: documentLinks,
                         residenceName: residence.name,
                         unitType: unit.type
                     });
