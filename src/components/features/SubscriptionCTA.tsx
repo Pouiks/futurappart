@@ -28,9 +28,17 @@ export const SubscriptionCTA = ({ unit, user, locale, isProfileComplete = false,
     const handleSubscribe = async () => {
         if (isSent) return;
 
-        // Demo Mode Interception
+        // Demo Mode Interception: Simulate Success
         if (isDemo) {
-            toast.info("Mode Démo : Cette fonctionnalité est simulée.");
+            setLoading(true);
+            toast.info("Mode Démo : Envoi simulé...");
+
+            // Fake delay for realism
+            setTimeout(() => {
+                setLoading(false);
+                setSuccess(true);
+                toast.success("Dossier envoyé (Simulation) !");
+            }, 1500);
             return;
         }
 
@@ -165,11 +173,11 @@ export const SubscriptionCTA = ({ unit, user, locale, isProfileComplete = false,
 
                 <button
                     onClick={handleSubscribe}
-                    disabled={loading || isSent || (isDemo && isProfileComplete)}
+                    disabled={loading || isSent}
                     className={`w-full font-bold py-4 rounded-xl shadow-lg transform transition-all text-lg flex items-center justify-center gap-2 ${isSent
                         ? "bg-green-500 text-white cursor-default shadow-none"
                         : (isDemo && isProfileComplete
-                            ? "bg-slate-100 text-slate-500 cursor-not-allowed shadow-none border border-slate-200"
+                            ? "bg-orange-500 hover:bg-orange-600 text-white active:scale-95" // Re-enable interaction style (Orange like 'finaliser')
                             : (user && !isProfileComplete
                                 ? "bg-orange-500 hover:bg-orange-600 text-white active:scale-95"
                                 : "bg-blue-600 hover:bg-blue-700 text-white active:scale-95"))
