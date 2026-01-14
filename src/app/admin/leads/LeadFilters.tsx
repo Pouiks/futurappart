@@ -4,7 +4,7 @@ import { Filter, Search, Download } from 'lucide-react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 
-export default function LeadFilters({ partners }: { partners: string[] }) {
+export default function LeadFilters({ partners }: { partners: { id: string, name: string }[] }) {
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
@@ -89,7 +89,7 @@ export default function LeadFilters({ partners }: { partners: string[] }) {
                 >
                     <option value="">Tous Partenaires</option>
                     {partners.map((p) => (
-                        <option key={p} value={p}>{p}</option>
+                        <option key={p.id} value={p.id}>{p.name}</option>
                     ))}
                 </select>
                 <div className="w-px h-4 bg-slate-200 mx-1"></div>

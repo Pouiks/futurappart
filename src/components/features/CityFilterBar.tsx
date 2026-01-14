@@ -12,14 +12,25 @@ interface CityFilterBarProps {
     currentCity: string;
 }
 
+import { CITIES, UNIT_TYPES } from '@/lib/search-constants';
+
+interface CityFilterBarProps {
+    currentCity: string;
+}
+
 export const CityFilterBar = ({ currentCity }: CityFilterBarProps) => {
-    const t = useTranslations('SearchOverlay'); // Reusing existing translations
+    const t = useTranslations('SearchOverlay');
+    const tCommon = useTranslations('Common');
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
 
     // State initialized from URL
     const [budget, setBudget] = useState(Number(searchParams.get('budgetMax')) || 800);
+    // Parse types from URL or default to ALL types if none selected? Or just Studio/Coloc?
+    // User requested consistency. Let's default to empty or what was there.
+    // Previous default: searchParams... : ['STUDIO', 'COLOCATION', 'T1', 'T2'] - this was inconsistent with other components.
+    // Let's use UNIT_TYPES.slice(0, 2) as default or keep logic.
     const [types, setTypes] = useState<string[]>(searchParams.getAll('types').length > 0 ? searchParams.getAll('types') : ['STUDIO', 'COLOCATION', 'T1', 'T2']);
     const [date, setDate] = useState(searchParams.get('date') || '');
     const [isPending, setIsPending] = useState(false);
@@ -70,13 +81,6 @@ export const CityFilterBar = ({ currentCity }: CityFilterBarProps) => {
         updateFilters({ types: newTypes });
     };
 
-    const getTypeLabel = (type: string) => {
-        if (type === 'STUDIO') return t('studio');
-        if (type === 'COLOCATION') return t('coloc');
-        if (type === 'COLIVING') return t('coliving');
-        return type;
-    };
-
     return (
         <div className="w-full bg-white border-b border-gray-200 sticky top-20 z-40 shadow-sm transition-all">
             <div className="max-w-[1920px] mx-auto px-4 md:px-6 py-3">
@@ -91,15 +95,9 @@ export const CityFilterBar = ({ currentCity }: CityFilterBarProps) => {
                             disabled={isPending}
                             className="w-full pl-10 pr-8 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 font-bold focus:ring-2 focus:ring-blue-500 outline-none appearance-none cursor-pointer hover:bg-gray-100 transition-colors capitalize disabled:opacity-50"
                         >
-                            <option value="paris">Paris</option>
-                            <option value="lyon">Lyon</option>
-                            <option value="bordeaux">Bordeaux</option>
-                            <option value="marseille">Marseille</option>
-                            <option value="montpellier">Montpellier</option>
-                            <option value="lille">Lille</option>
-                            <option value="toulouse">Toulouse</option>
-                            <option value="rennes">Rennes</option>
-                            <option value="nantes">Nantes</option>
+                            {CITIES.map(c => (
+                                <option key={c.slug} value={c.slug}>{c.title}</option>
+                            ))}
                         </select>
                         <ChevronDown className="w-4 h-4 text-gray-500 absolute right-3 pointer-events-none" />
                     </div>
@@ -128,7 +126,7 @@ export const CityFilterBar = ({ currentCity }: CityFilterBarProps) => {
 
                         {/* Type Filter */}
                         <div className="flex items-center gap-2">
-                            {['STUDIO', 'COLOCATION'].map(type => (
+                            {UNIT_TYPES.map(type => (
                                 <button
                                     key={type}
                                     onClick={() => toggleType(type)}
@@ -138,9 +136,8 @@ export const CityFilterBar = ({ currentCity }: CityFilterBarProps) => {
                                             : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
                                         }`}
                                 >
-                                    {type === 'STUDIO' && <Home className="w-4 h-4" />}
-                                    {type === 'COLOCATION' && <SlidersHorizontal className="w-4 h-4" />}
-                                    {getTypeLabel(type)}
+                                    {['COLOCATION', 'COLIVING'].includes(type) ? <SlidersHorizontal className="w-4 h-4" /> : <Home className="w-4 h-4" />}
+                                    {tCommon(`UnitTypes.${type}`)}
                                 </button>
                             ))}
                         </div>

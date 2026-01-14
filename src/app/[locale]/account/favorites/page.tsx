@@ -65,6 +65,7 @@ export default async function FavoritesPage({ params }: { params: Promise<{ loca
                                 surface: fav.unit.surface ? Number(fav.unit.surface) : null,
                                 price: Number(fav.unit.price)
                             }}
+                            isFavorite={true}
                         />
                     ))}
                 </div>

@@ -1,4 +1,4 @@
-import { searchResidences, getPartnerConfigsSource } from './actions';
+import { searchResidences, getPartnerConfigsSource, getBrandsList } from './actions';
 import ResidenceList from './ResidenceList';
 import { Building } from 'lucide-react';
 
@@ -8,7 +8,8 @@ export default async function ResidencesPage({ searchParams }: { searchParams?: 
 
     // Server fetch
     const residences = await searchResidences();
-    const brands = await getPartnerConfigsSource(); // For the modal and filter
+    const brands = await getPartnerConfigsSource();
+    const brandEntities = await getBrandsList();
 
     return (
         <div className="space-y-8">
@@ -21,6 +22,7 @@ export default async function ResidencesPage({ searchParams }: { searchParams?: 
                 initialResidences={residences}
                 initialSearch={query}
                 brands={brands}
+                brandEntities={brandEntities}
             />
         </div>
     );

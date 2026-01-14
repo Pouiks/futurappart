@@ -6,6 +6,7 @@ export type DashboardStats = {
     totalSearches: number;
     totalLeads: number;
     totalClicks: number;
+    totalViews: number;
     topCities: Array<{ city: string; count: number }>;
     leadEvolution: Array<{ date: string; count: number }>;
 };
@@ -15,7 +16,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
     // 1. KPI Counts (Parallel)
-    const [searches, leads, clicks] = await Promise.all([
+    const [searches, leads, clicks, views] = await Promise.all([
         prisma.event.count({
             where: {
                 eventType: 'search_submitted',
@@ -31,6 +32,12 @@ export async function getDashboardStats(): Promise<DashboardStats> {
         prisma.event.count({
             where: {
                 eventType: 'cta_clicked',
+                createdAt: { gte: thirtyDaysAgo }
+            }
+        }),
+        prisma.event.count({
+            where: {
+                eventType: 'view_residence',
                 createdAt: { gte: thirtyDaysAgo }
             }
         })
@@ -82,6 +89,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
         totalSearches: searches,
         totalLeads: leads,
         totalClicks: clicks, // Conversion tracking
+        totalViews: views,
         topCities,
         leadEvolution
     };

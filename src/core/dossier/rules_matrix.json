@@ -1,0 +1,703 @@
+{
+    "version": "1.0.0",
+    "nationalityGroups": [
+        "FR",
+        "EU",
+        "NON_EU"
+    ],
+    "roles": [
+        "APPLICANT",
+        "GUARANTOR",
+        "LEGAL_REPRESENTATIVE"
+    ],
+    "personStatuses": [
+        "STUDENT",
+        "EMPLOYEE",
+        "SELF_EMPLOYED",
+        "ENTREPRENEUR",
+        "RETIRED",
+        "UNEMPLOYED",
+        "OTHER"
+    ],
+    "guarantorTypes": [
+        "PERSON",
+        "ORGANISM"
+    ],
+    "docTypes": [
+        "IDENTITY",
+        "RESIDENCY_RIGHT",
+        "STUDENT_ENROLLMENT",
+        "PROFESSIONAL_STATUS_PROOF",
+        "INCOME_PROOF",
+        "TAX_NOTICE",
+        "ADDRESS_PROOF",
+        "GUARANTEE_CERTIFICATE"
+    ],
+    "docTypeMeta": {
+        "IDENTITY": {
+            "title": "Pièce d’identité",
+            "why": "Permet de vérifier l’identité du signataire ou du garant.",
+            "examples": [
+                "CNI",
+                "Passeport",
+                "Titre de séjour (peut aussi couvrir RESIDENCY_RIGHT selon cas)"
+            ]
+        },
+        "RESIDENCY_RIGHT": {
+            "title": "Droit au séjour",
+            "why": "Permet de justifier le droit au séjour pour les profils hors UE.",
+            "examples": [
+                "Titre de séjour",
+                "Visa long séjour",
+                "Carte de résident"
+            ]
+        },
+        "STUDENT_ENROLLMENT": {
+            "title": "Justificatif de scolarité",
+            "why": "Confirme le statut étudiant.",
+            "examples": [
+                "Certificat de scolarité",
+                "Attestation d’inscription",
+                "Carte étudiante"
+            ]
+        },
+        "PROFESSIONAL_STATUS_PROOF": {
+            "title": "Justificatif de situation professionnelle",
+            "why": "Permet d’établir la situation professionnelle.",
+            "examples": [
+                "Contrat de travail",
+                "Attestation employeur",
+                "Extrait d’immatriculation / preuve d’activité"
+            ]
+        },
+        "INCOME_PROOF": {
+            "title": "Justificatif de ressources",
+            "why": "Permet d’évaluer la capacité financière.",
+            "examples": [
+                "Bulletins de salaire",
+                "Attestation de pension",
+                "Justificatif d’allocations (si applicable)"
+            ]
+        },
+        "TAX_NOTICE": {
+            "title": "Avis d’imposition",
+            "why": "Justifie les revenus de manière stable.",
+            "examples": [
+                "Avis d’imposition"
+            ]
+        },
+        "ADDRESS_PROOF": {
+            "title": "Justificatif de domicile",
+            "why": "Permet de vérifier l’adresse de la personne.",
+            "examples": [
+                "Facture",
+                "Quittance",
+                "Attestation d’hébergement (selon cas)"
+            ]
+        },
+        "GUARANTEE_CERTIFICATE": {
+            "title": "Attestation de garantie",
+            "why": "Justifie une garantie via un organisme.",
+            "examples": [
+                "Visale",
+                "GarantMe",
+                "Autre attestation de garantie"
+            ]
+        }
+    },
+    "rules": [
+        {
+            "id": "R-000-MINOR-APPLICANT-NO-DOCS",
+            "priority": 1000,
+            "when": {
+                "role": "APPLICANT",
+                "isMinor": true
+            },
+            "required": [],
+            "orGroups": [],
+            "recommended": [],
+            "ui": {
+                "message": "Vous êtes mineur : les pièces seront demandées au représentant légal (signataire).",
+                "why": "Un mineur non émancipé ne constitue pas le dossier signataire."
+            }
+        },
+        {
+            "id": "R-010-IDENTITY-APPLICANT-LEGAL",
+            "priority": 900,
+            "when": {
+                "roleIn": [
+                    "APPLICANT",
+                    "LEGAL_REPRESENTATIVE"
+                ],
+                "not": {
+                    "role": "APPLICANT",
+                    "isMinor": true
+                }
+            },
+            "required": [
+                "IDENTITY"
+            ],
+            "orGroups": [],
+            "recommended": [],
+            "ui": {
+                "message": "Pièce d’identité requise.",
+                "why": "Document nécessaire pour identifier la personne."
+            }
+        },
+        {
+            "id": "R-011-IDENTITY-GUARANTOR-PERSON",
+            "priority": 900,
+            "when": {
+                "role": "GUARANTOR",
+                "guarantorType": "PERSON"
+            },
+            "required": [
+                "IDENTITY"
+            ],
+            "orGroups": [],
+            "recommended": [],
+            "ui": {
+                "message": "Pièce d’identité du garant requise.",
+                "why": "Document nécessaire pour identifier le garant physique."
+            }
+        },
+        {
+            "id": "R-020-NON_EU-RESIDENCY_RIGHT",
+            "priority": 850,
+            "when": {
+                "roleIn": [
+                    "APPLICANT",
+                    "LEGAL_REPRESENTATIVE"
+                ],
+                "nationalityGroup": "NON_EU",
+                "not": {
+                    "role": "APPLICANT",
+                    "isMinor": true
+                }
+            },
+            "required": [
+                "RESIDENCY_RIGHT"
+            ],
+            "orGroups": [],
+            "recommended": [],
+            "ui": {
+                "message": "Justificatif de droit au séjour requis (profil hors UE).",
+                "why": "Réduction de risque + conformité France."
+            }
+        },
+        {
+            "id": "R-100-APPLICANT-STUDENT",
+            "priority": 800,
+            "when": {
+                "role": "APPLICANT",
+                "isMinor": false,
+                "status": "STUDENT"
+            },
+            "required": [
+                "STUDENT_ENROLLMENT"
+            ],
+            "orGroups": [],
+            "recommended": [
+                "ADDRESS_PROOF"
+            ],
+            "ui": {
+                "message": "Statut étudiant : justificatif de scolarité requis.",
+                "why": "Permet à la résidence d’identifier le statut et le type de contrat."
+            }
+        },
+        {
+            "id": "R-110-APPLICANT-EMPLOYEE",
+            "priority": 800,
+            "when": {
+                "role": "APPLICANT",
+                "isMinor": false,
+                "status": "EMPLOYEE"
+            },
+            "required": [
+                "PROFESSIONAL_STATUS_PROOF"
+            ],
+            "orGroups": [
+                [
+                    "INCOME_PROOF",
+                    "TAX_NOTICE"
+                ]
+            ],
+            "recommended": [
+                "ADDRESS_PROOF"
+            ],
+            "ui": {
+                "message": "Statut salarié : situation pro + ressources requises.",
+                "why": "Permet d’évaluer la stabilité et la capacité financière."
+            }
+        },
+        {
+            "id": "R-120-APPLICANT-SELF_EMPLOYED",
+            "priority": 800,
+            "when": {
+                "role": "APPLICANT",
+                "isMinor": false,
+                "status": "SELF_EMPLOYED"
+            },
+            "required": [
+                "PROFESSIONAL_STATUS_PROOF"
+            ],
+            "orGroups": [
+                [
+                    "TAX_NOTICE",
+                    "INCOME_PROOF"
+                ]
+            ],
+            "recommended": [
+                "ADDRESS_PROOF"
+            ],
+            "ui": {
+                "message": "Indépendant : preuve d’activité + ressources requises.",
+                "why": "Alternative entre avis d’imposition et autre preuve de ressources."
+            }
+        },
+        {
+            "id": "R-121-APPLICANT-ENTREPRENEUR",
+            "priority": 800,
+            "when": {
+                "role": "APPLICANT",
+                "isMinor": false,
+                "status": "ENTREPRENEUR"
+            },
+            "required": [
+                "PROFESSIONAL_STATUS_PROOF"
+            ],
+            "orGroups": [
+                [
+                    "TAX_NOTICE",
+                    "INCOME_PROOF"
+                ]
+            ],
+            "recommended": [
+                "ADDRESS_PROOF"
+            ],
+            "ui": {
+                "message": "Entrepreneur : preuve d’activité + ressources requises.",
+                "why": "Alternative entre avis d’imposition et autre preuve de ressources."
+            }
+        },
+        {
+            "id": "R-130-APPLICANT-RETIRED",
+            "priority": 800,
+            "when": {
+                "role": "APPLICANT",
+                "isMinor": false,
+                "status": "RETIRED"
+            },
+            "required": [],
+            "orGroups": [
+                [
+                    "INCOME_PROOF",
+                    "TAX_NOTICE"
+                ]
+            ],
+            "recommended": [
+                "ADDRESS_PROOF"
+            ],
+            "ui": {
+                "message": "Retraité : ressources requises.",
+                "why": "Pension (ressources) ou avis d’imposition."
+            }
+        },
+        {
+            "id": "R-140-APPLICANT-UNEMPLOYED",
+            "priority": 800,
+            "when": {
+                "role": "APPLICANT",
+                "isMinor": false,
+                "status": "UNEMPLOYED"
+            },
+            "required": [],
+            "orGroups": [],
+            "recommended": [
+                "TAX_NOTICE",
+                "INCOME_PROOF",
+                "ADDRESS_PROOF"
+            ],
+            "ui": {
+                "message": "Sans emploi : documents de ressources recommandés.",
+                "why": "Non bloquant par défaut, dépend du paramétrage résidence/partenaire."
+            }
+        },
+        {
+            "id": "R-150-APPLICANT-OTHER",
+            "priority": 800,
+            "when": {
+                "role": "APPLICANT",
+                "isMinor": false,
+                "status": "OTHER"
+            },
+            "required": [],
+            "orGroups": [
+                [
+                    "INCOME_PROOF",
+                    "TAX_NOTICE"
+                ]
+            ],
+            "recommended": [
+                "PROFESSIONAL_STATUS_PROOF",
+                "ADDRESS_PROOF"
+            ],
+            "ui": {
+                "message": "Autre situation : ressources requises (au moins une preuve).",
+                "why": "Permet d’éviter la sur-collecte tout en restant exploitable."
+            }
+        },
+        {
+            "id": "R-200-LEGAL_REP-STUDENT",
+            "priority": 780,
+            "when": {
+                "role": "LEGAL_REPRESENTATIVE",
+                "status": "STUDENT"
+            },
+            "required": [
+                "STUDENT_ENROLLMENT"
+            ],
+            "orGroups": [],
+            "recommended": [
+                "ADDRESS_PROOF"
+            ],
+            "ui": {
+                "message": "Représentant légal étudiant : scolarité requise.",
+                "why": "Même logique que pour un candidat étudiant."
+            }
+        },
+        {
+            "id": "R-210-LEGAL_REP-EMPLOYEE",
+            "priority": 780,
+            "when": {
+                "role": "LEGAL_REPRESENTATIVE",
+                "status": "EMPLOYEE"
+            },
+            "required": [
+                "PROFESSIONAL_STATUS_PROOF"
+            ],
+            "orGroups": [
+                [
+                    "INCOME_PROOF",
+                    "TAX_NOTICE"
+                ]
+            ],
+            "recommended": [
+                "ADDRESS_PROOF"
+            ],
+            "ui": {
+                "message": "Représentant légal salarié : situation pro + ressources.",
+                "why": "Dossier signataire."
+            }
+        },
+        {
+            "id": "R-220-LEGAL_REP-SELF_EMPLOYED",
+            "priority": 780,
+            "when": {
+                "role": "LEGAL_REPRESENTATIVE",
+                "status": "SELF_EMPLOYED"
+            },
+            "required": [
+                "PROFESSIONAL_STATUS_PROOF"
+            ],
+            "orGroups": [
+                [
+                    "TAX_NOTICE",
+                    "INCOME_PROOF"
+                ]
+            ],
+            "recommended": [
+                "ADDRESS_PROOF"
+            ],
+            "ui": {
+                "message": "Représentant légal indépendant : activité + ressources.",
+                "why": "Dossier signataire."
+            }
+        },
+        {
+            "id": "R-221-LEGAL_REP-ENTREPRENEUR",
+            "priority": 780,
+            "when": {
+                "role": "LEGAL_REPRESENTATIVE",
+                "status": "ENTREPRENEUR"
+            },
+            "required": [
+                "PROFESSIONAL_STATUS_PROOF"
+            ],
+            "orGroups": [
+                [
+                    "TAX_NOTICE",
+                    "INCOME_PROOF"
+                ]
+            ],
+            "recommended": [
+                "ADDRESS_PROOF"
+            ],
+            "ui": {
+                "message": "Représentant légal entrepreneur : activité + ressources.",
+                "why": "Dossier signataire."
+            }
+        },
+        {
+            "id": "R-230-LEGAL_REP-RETIRED",
+            "priority": 780,
+            "when": {
+                "role": "LEGAL_REPRESENTATIVE",
+                "status": "RETIRED"
+            },
+            "required": [],
+            "orGroups": [
+                [
+                    "INCOME_PROOF",
+                    "TAX_NOTICE"
+                ]
+            ],
+            "recommended": [
+                "ADDRESS_PROOF"
+            ],
+            "ui": {
+                "message": "Représentant légal retraité : ressources.",
+                "why": "Dossier signataire."
+            }
+        },
+        {
+            "id": "R-240-LEGAL_REP-UNEMPLOYED",
+            "priority": 780,
+            "when": {
+                "role": "LEGAL_REPRESENTATIVE",
+                "status": "UNEMPLOYED"
+            },
+            "required": [],
+            "orGroups": [],
+            "recommended": [
+                "TAX_NOTICE",
+                "INCOME_PROOF",
+                "ADDRESS_PROOF"
+            ],
+            "ui": {
+                "message": "Représentant légal sans emploi : ressources recommandées.",
+                "why": "Dossier signataire."
+            }
+        },
+        {
+            "id": "R-250-LEGAL_REP-OTHER",
+            "priority": 780,
+            "when": {
+                "role": "LEGAL_REPRESENTATIVE",
+                "status": "OTHER"
+            },
+            "required": [],
+            "orGroups": [
+                [
+                    "INCOME_PROOF",
+                    "TAX_NOTICE"
+                ]
+            ],
+            "recommended": [
+                "PROFESSIONAL_STATUS_PROOF",
+                "ADDRESS_PROOF"
+            ],
+            "ui": {
+                "message": "Représentant légal autre : au moins une preuve de ressources.",
+                "why": "Dossier signataire."
+            }
+        },
+        {
+            "id": "R-300-GUARANTOR-ORGANISM",
+            "priority": 900,
+            "when": {
+                "role": "GUARANTOR",
+                "guarantorType": "ORGANISM"
+            },
+            "required": [
+                "GUARANTEE_CERTIFICATE"
+            ],
+            "orGroups": [],
+            "recommended": [],
+            "ui": {
+                "message": "Garant organisme : attestation de garantie requise.",
+                "why": "Remplace les pièces de revenus d’une personne physique."
+            }
+        },
+        {
+            "id": "R-310-GUARANTOR-PERSON-STUDENT",
+            "priority": 760,
+            "when": {
+                "role": "GUARANTOR",
+                "guarantorType": "PERSON",
+                "status": "STUDENT"
+            },
+            "required": [
+                "STUDENT_ENROLLMENT"
+            ],
+            "orGroups": [
+                [
+                    "INCOME_PROOF",
+                    "TAX_NOTICE"
+                ]
+            ],
+            "recommended": [
+                "ADDRESS_PROOF"
+            ],
+            "ui": {
+                "message": "Garant étudiant : scolarité + ressources.",
+                "why": "Garant personne physique."
+            }
+        },
+        {
+            "id": "R-320-GUARANTOR-PERSON-EMPLOYEE",
+            "priority": 760,
+            "when": {
+                "role": "GUARANTOR",
+                "guarantorType": "PERSON",
+                "status": "EMPLOYEE"
+            },
+            "required": [
+                "PROFESSIONAL_STATUS_PROOF"
+            ],
+            "orGroups": [
+                [
+                    "INCOME_PROOF",
+                    "TAX_NOTICE"
+                ]
+            ],
+            "recommended": [
+                "ADDRESS_PROOF"
+            ],
+            "ui": {
+                "message": "Garant salarié : situation pro + ressources.",
+                "why": "Garant personne physique."
+            }
+        },
+        {
+            "id": "R-330-GUARANTOR-PERSON-SELF_EMPLOYED",
+            "priority": 760,
+            "when": {
+                "role": "GUARANTOR",
+                "guarantorType": "PERSON",
+                "status": "SELF_EMPLOYED"
+            },
+            "required": [
+                "PROFESSIONAL_STATUS_PROOF"
+            ],
+            "orGroups": [
+                [
+                    "TAX_NOTICE",
+                    "INCOME_PROOF"
+                ]
+            ],
+            "recommended": [
+                "ADDRESS_PROOF"
+            ],
+            "ui": {
+                "message": "Garant indépendant : activité + ressources.",
+                "why": "Garant personne physique."
+            }
+        },
+        {
+            "id": "R-331-GUARANTOR-PERSON-ENTREPRENEUR",
+            "priority": 760,
+            "when": {
+                "role": "GUARANTOR",
+                "guarantorType": "PERSON",
+                "status": "ENTREPRENEUR"
+            },
+            "required": [
+                "PROFESSIONAL_STATUS_PROOF"
+            ],
+            "orGroups": [
+                [
+                    "TAX_NOTICE",
+                    "INCOME_PROOF"
+                ]
+            ],
+            "recommended": [
+                "ADDRESS_PROOF"
+            ],
+            "ui": {
+                "message": "Garant entrepreneur : activité + ressources.",
+                "why": "Garant personne physique."
+            }
+        },
+        {
+            "id": "R-340-GUARANTOR-PERSON-RETIRED",
+            "priority": 760,
+            "when": {
+                "role": "GUARANTOR",
+                "guarantorType": "PERSON",
+                "status": "RETIRED"
+            },
+            "required": [],
+            "orGroups": [
+                [
+                    "INCOME_PROOF",
+                    "TAX_NOTICE"
+                ]
+            ],
+            "recommended": [
+                "ADDRESS_PROOF"
+            ],
+            "ui": {
+                "message": "Garant retraité : ressources.",
+                "why": "Garant personne physique."
+            }
+        },
+        {
+            "id": "R-350-GUARANTOR-PERSON-UNEMPLOYED",
+            "priority": 760,
+            "when": {
+                "role": "GUARANTOR",
+                "guarantorType": "PERSON",
+                "status": "UNEMPLOYED"
+            },
+            "required": [],
+            "orGroups": [],
+            "recommended": [
+                "TAX_NOTICE",
+                "INCOME_PROOF",
+                "ADDRESS_PROOF"
+            ],
+            "ui": {
+                "message": "Garant sans emploi : ressources recommandées.",
+                "why": "Garant personne physique."
+            }
+        },
+        {
+            "id": "R-360-GUARANTOR-PERSON-OTHER",
+            "priority": 760,
+            "when": {
+                "role": "GUARANTOR",
+                "guarantorType": "PERSON",
+                "status": "OTHER"
+            },
+            "required": [],
+            "orGroups": [
+                [
+                    "INCOME_PROOF",
+                    "TAX_NOTICE"
+                ]
+            ],
+            "recommended": [
+                "PROFESSIONAL_STATUS_PROOF",
+                "ADDRESS_PROOF"
+            ],
+            "ui": {
+                "message": "Garant autre : au moins une preuve de ressources.",
+                "why": "Garant personne physique."
+            }
+        }
+    ],
+    "evaluation": {
+        "mergeStrategy": {
+            "required": "union",
+            "recommended": "union",
+            "orGroups": "concat",
+            "dedupe": true
+        },
+        "notes": [
+            "Les règles s’additionnent. Ex: NON_EU ajoute RESIDENCY_RIGHT en plus des règles de statut.",
+            "IDENTITY s’applique à tous sauf APPLICANT mineur.",
+            "GUARANTOR ORGANISM écrase implicitement les règles de statut côté garant (attestation seulement)."
+        ]
+    }
+}

@@ -5,9 +5,15 @@ import { useRouter } from '@/i18n/navigation';
 import { useTranslations } from 'next-intl';
 import { DatePicker } from '@/components/ui/date-picker';
 import { addDays } from 'date-fns';
+import { CITIES, UNIT_TYPES } from '@/lib/search-constants';
 
-export const SearchOverlay = () => {
+interface SearchOverlayProps {
+    cities?: { title: string; slug: string }[];
+}
+
+export const SearchOverlay = ({ cities = [] }: SearchOverlayProps) => {
     const t = useTranslations('SearchOverlay');
+    const tCommon = useTranslations('Common');
     const router = useRouter();
     const [city, setCity] = useState('');
     const [budget, setBudget] = useState(800);
@@ -15,7 +21,7 @@ export const SearchOverlay = () => {
     const [types, setTypes] = useState<string[]>(['STUDIO']);
 
     const handleSearch = () => {
-        if (!city) return; // Simple validation for MVP
+        if (!city) return;
 
         const params = new URLSearchParams();
         params.set('city', city);
@@ -28,7 +34,6 @@ export const SearchOverlay = () => {
 
     const toggleType = (t: string) => {
         if (types.includes(t)) {
-            // Prevent empty selection
             if (types.length > 1) setTypes(types.filter(x => x !== t));
         } else {
             setTypes([...types, t]);
@@ -36,10 +41,7 @@ export const SearchOverlay = () => {
     };
 
     const getTypeLabel = (type: string) => {
-        if (type === 'STUDIO') return t('studio');
-        if (type === 'COLOCATION') return t('coloc');
-        if (type === 'COLIVING') return t('coliving');
-        return type;
+        return tCommon(`UnitTypes.${type}`);
     };
 
     return (
@@ -58,12 +60,15 @@ export const SearchOverlay = () => {
                             className="w-full bg-gray-50 border border-gray-300 text-gray-900 rounded-xl focus:ring-blue-500 focus:border-blue-500 block p-3 pl-10 h-12 text-base font-medium shadow-sm transition-colors hover:bg-white cursor-pointer"
                         >
                             <option value="" disabled>{t('cityPlaceholder')}</option>
-                            <option value="bordeaux">Bordeaux</option>
-                            <option value="lyon">Lyon</option>
-                            <option value="paris">Paris</option>
-                            <option value="lille">Lille</option>
-                            <option value="toulouse">Toulouse</option>
-                            <option value="marseille">Marseille</option>
+                            {cities.length > 0 ? (
+                                cities.map((c) => (
+                                    <option key={c.slug} value={c.slug}>{c.title}</option>
+                                ))
+                            ) : (
+                                CITIES.map(c => (
+                                    <option key={c.slug} value={c.slug}>{c.title}</option>
+                                ))
+                            )}
                         </select>
                         <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-500">
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
@@ -71,7 +76,7 @@ export const SearchOverlay = () => {
                     </div>
                 </div>
 
-                {/* Date Picker (New) */}
+                {/* Date Picker */}
                 <div>
                     <DatePicker
                         label={t('arrivalDateLabel')}
@@ -107,12 +112,12 @@ export const SearchOverlay = () => {
                 {/* Type Selection */}
                 <div>
                     <label className="block text-sm font-bold text-gray-900 mb-1.5">{t('typeLabel')}</label>
-                    <div className="flex gap-2">
-                        {['STUDIO', 'COLOCATION', 'COLIVING'].map(t => (
+                    <div className="flex gap-2 flex-wrap">
+                        {UNIT_TYPES.map(t => (
                             <button
                                 key={t}
                                 onClick={() => toggleType(t)}
-                                className={`flex-1 py-2.5 px-3 text-sm font-bold rounded-xl border-2 transition-all duration-200
+                                className={`flex-1 py-2.5 px-3 text-sm font-bold rounded-xl border-2 transition-all duration-200 min-w-[100px]
                             ${types.includes(t)
                                         ? 'bg-blue-600 text-white border-blue-600 shadow-md scale-[1.02]'
                                         : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300 hover:bg-blue-50'

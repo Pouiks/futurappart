@@ -100,8 +100,16 @@ export async function signup(prevState: any, formData: FormData) {
     if (data.user) {
         // Create Profile
         try {
-            await prisma.profile.create({
-                data: {
+            await prisma.profile.upsert({
+                where: { id: data.user.id },
+                update: {
+                    firstName,
+                    lastName,
+                    phone,
+                    status,
+                    arrivalDate: arrivalDate ? new Date(arrivalDate) : null,
+                },
+                create: {
                     id: data.user.id,
                     email: email,
                     firstName,

@@ -12,12 +12,49 @@ export async function processStagingToCanon(batchId: string) {
         where: { importBatchId: batchId }
     });
 
+    // Brand Cache to avoid repeated DB calls
+    const brandCache = new Map<string, string>();
+
     for (const row of records) {
         if (!row.name || !row.cityNormalized) continue;
 
+        const raw = row.rawData as any;
+        const brandName = raw.brandName;
+        let brandId = null;
+
+        // 1. Resolve Brand
+        if (brandName && brandName !== 'Unknown Brand') {
+            if (brandCache.has(brandName)) {
+                brandId = brandCache.get(brandName);
+            } else {
+                // Find or Create Brand
+                const slug = slugify(brandName);
+
+                // Try find first
+                let brand = await prisma.brand.findFirst({
+                    where: { slug: slug }
+                });
+
+                if (!brand) {
+                    brand = await prisma.brand.create({
+                        data: {
+                            name: brandName,
+                            slug: slug,
+                            contactEmail: 'contact@placeholder.com'
+                        }
+                    });
+                }
+
+                if (brand) {
+                    brandId = brand.id;
+                    brandCache.set(brandName, brand.id);
+                }
+            }
+        }
+
         const slug = `${row.cityNormalized}-${slugify(row.name)}-${shortHash(row.url)}`;
 
-        // 1. Upsert Residence
+        // 2. Upsert Residence
         // Prisma upsert requires a unique constraint in 'where'
         // We have @@unique([sourceId, url]) in CanonResidence
 
@@ -30,16 +67,18 @@ export async function processStagingToCanon(batchId: string) {
             },
             update: {
                 updatedAt: new Date(),
-                // In a real app we might update price range here
+                brandId: brandId, // Update brand on re-run
+                name: row.name // Update clean name on re-run
             },
             create: {
-                slug: slug, // Verify slug uniqueness policy separately or rely on DB constraint throw
+                slug: slug,
                 name: row.name,
                 address: row.address,
                 cityNormalized: row.cityNormalized,
                 sourceId: row.sourceId,
                 url: row.url,
-                trustScore: 50
+                trustScore: 50,
+                brandId: brandId
             }
         });
 
@@ -65,6 +104,9 @@ export async function processStagingToCanon(batchId: string) {
                     price: row.priceMin,
                     surface: row.surfaceMin,
                     availability: row.availability || AvailabilityEnum.UNKNOWN,
+                    description: (row.rawData as any).description || null,
+                    amenities: (row.rawData as any).amenities || [],
+                    images: (row.rawData as any).images || [],
                     updatedAt: new Date()
                 }
             });
@@ -75,7 +117,10 @@ export async function processStagingToCanon(batchId: string) {
                     type: type,
                     price: row.priceMin,
                     surface: row.surfaceMin,
-                    availability: row.availability || AvailabilityEnum.UNKNOWN
+                    availability: row.availability || AvailabilityEnum.UNKNOWN,
+                    description: (row.rawData as any).description || null,
+                    amenities: (row.rawData as any).amenities || [],
+                    images: (row.rawData as any).images || [],
                 }
             });
         }

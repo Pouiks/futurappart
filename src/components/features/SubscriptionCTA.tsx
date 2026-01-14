@@ -4,25 +4,45 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Check, Shield, User } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import { toast } from 'sonner';
 
 interface SubscriptionCTAProps {
     unit: any;
     user: any | null;
     locale: string;
     isProfileComplete?: boolean;
+    firstName?: string;
+    missingFields?: string[];
+    isAlreadySent?: boolean;
 }
 
-export const SubscriptionCTA = ({ unit, user, locale, isProfileComplete = false }: SubscriptionCTAProps) => {
+export const SubscriptionCTA = ({ unit, user, locale, isProfileComplete = false, firstName, missingFields = [], isAlreadySent = false }: SubscriptionCTAProps) => {
     const router = useRouter();
     const t = useTranslations('Subscription');
 
     const [loading, setLoading] = useState(false);
+    const [success, setSuccess] = useState(false);
+    const isSent = isAlreadySent || success;
 
     const handleSubscribe = async () => {
+        if (isSent) return;
         setLoading(true);
 
         if (user && !isProfileComplete) {
+            // Auto-save to favorites so user doesn't lose it
+            try {
+                await fetch('/api/favorites/add', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ unitId: unit.id })
+                });
+                toast.success("Mis de côté dans vos favoris !");
+            } catch (err) {
+                console.error("Auto-favorite failed", err);
+            }
+
             router.push(`/${locale}/account/edit`);
+            setLoading(false); // Stop loading if redirecting
             return;
         }
 
@@ -66,8 +86,8 @@ export const SubscriptionCTA = ({ unit, user, locale, isProfileComplete = false 
             const data = await res.json();
 
             if (res.ok) {
-                alert("🎉 Votre demande a bien été envoyée ! Le gestionnaire vous recontactera.");
-                // Optional: Show success state in UI instead of alert
+                setSuccess(true);
+                router.refresh();
             } else {
                 if (data.code === 'PROFILE_INCOMPLETE') {
                     // Redirect to completion
@@ -86,12 +106,19 @@ export const SubscriptionCTA = ({ unit, user, locale, isProfileComplete = false 
 
     return (
         <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
-            <div className="bg-gradient-to-r from-blue-600 to-blue-800 p-6 text-white text-center">
+            <div className={`p-6 text-white text-center transition-colors ${isSent ? 'bg-green-600' : 'bg-gradient-to-r from-blue-600 to-blue-800'}`}>
                 <h3 className="text-xl font-bold mb-1">
-                    {user ? t('hello', { name: user.user_metadata?.first_name || 'Étudiant' }) : t('interested')}
+                    {isSent ? "Candidature envoyée !" : (user ? `Bonjour ${firstName || 'Étudiant'},` : t('interested'))}
                 </h3>
-                <p className="text-blue-100 text-sm">
-                    {user ? t('ready') : t('deposit')}
+                <p className={`text-sm ${isSent ? 'text-green-100' : 'text-blue-100'}`}>
+                    {isSent
+                        ? "Le propriétaire a reçu votre dossier."
+                        : (user ? (
+                            isProfileComplete
+                                ? "Votre dossier est prêt à être envoyé."
+                                : "Finalisez votre dossier pour postuler."
+                        ) : t('deposit'))
+                    }
                 </p>
             </div>
 
@@ -101,36 +128,58 @@ export const SubscriptionCTA = ({ unit, user, locale, isProfileComplete = false 
                         <div className="p-2 bg-green-50 rounded-full text-green-600"><Check className="w-4 h-4" /></div>
                         <span className="font-medium text-sm">{t('free')}</span>
                     </div>
+
+                    {/* Guarantors Status */}
                     <div className="flex items-center gap-3 text-gray-700">
-                        <div className="p-2 bg-purple-50 rounded-full text-purple-600"><Shield className="w-4 h-4" /></div>
-                        <span className="font-medium text-sm">{t('guarantee')}</span>
+                        {missingFields.includes('garants') ? (
+                            <div className="p-2 bg-orange-50 rounded-full text-orange-600"><Shield className="w-4 h-4" /></div>
+                        ) : (
+                            <div className="p-2 bg-purple-50 rounded-full text-purple-600"><Shield className="w-4 h-4" /></div>
+                        )}
+                        <span className={`font-medium text-sm ${missingFields.includes('garants') ? 'text-orange-600 font-bold' : ''}`}>
+                            {missingFields.includes('garants') ? 'Garant manquant' : t('guarantee')}
+                        </span>
                     </div>
+
                     {user && (
-                        <div className="flex items-center gap-3 text-blue-700 bg-blue-50 p-3 rounded-lg border border-blue-100">
-                            <User className="w-4 h-4" />
-                            <span className="font-bold text-sm">{t('verified')}</span>
+                        <div className="flex items-center gap-3 text-gray-700">
+                            {missingFields.includes('revenus') ? (
+                                <div className="p-2 bg-orange-50 rounded-full text-orange-600"><User className="w-4 h-4" /></div>
+                            ) : (
+                                <div className="p-2 bg-blue-50 rounded-full text-blue-600"><User className="w-4 h-4" /></div>
+                            )}
+                            <span className={`font-medium text-sm ${missingFields.includes('revenus') ? 'text-orange-600 font-bold' : ''}`}>
+                                {missingFields.includes('revenus') ? 'Revenus manquants' : t('verified')}
+                            </span>
                         </div>
                     )}
                 </div>
 
-                {user && !isProfileComplete && (
-                    <div className="mb-4 bg-orange-50 border border-orange-100 p-3 rounded-lg flex items-start gap-3 text-sm text-orange-800 animate-in fade-in slide-in-from-bottom-2">
-                        <div className="mt-0.5"><Shield className="w-4 h-4 text-orange-600" /></div>
-                        <p className="font-medium">{t('incompleteBanner')}</p>
-                    </div>
-                )}
-
                 <button
                     onClick={handleSubscribe}
-                    disabled={loading}
-                    className={`w-full font-bold py-4 rounded-xl shadow-lg transform active:scale-95 transition-all text-lg flex items-center justify-center gap-2 ${user && !isProfileComplete
-                            ? "bg-orange-500 hover:bg-orange-600 text-white"
-                            : "bg-blue-600 hover:bg-blue-700 text-white"
+                    disabled={loading || isSent}
+                    className={`w-full font-bold py-4 rounded-xl shadow-lg transform transition-all text-lg flex items-center justify-center gap-2 ${isSent
+                        ? "bg-green-500 text-white cursor-default shadow-none"
+                        : (user && !isProfileComplete
+                            ? "bg-orange-500 hover:bg-orange-600 text-white active:scale-95"
+                            : "bg-blue-600 hover:bg-blue-700 text-white active:scale-95")
                         }`}
                 >
                     {loading ? t('loading') : (
-                        user && !isProfileComplete ? t('finalize') :
-                            (user ? t('sendOneClick') : t('submit'))
+                        isSent ? (
+                            <>
+                                <Check className="w-5 h-5" />
+                                <span>Dossier envoyé</span>
+                            </>
+                        ) : (
+                            user && !isProfileComplete ? (
+                                <>
+                                    <span>Finaliser mon profil</span>
+                                    <span className="text-sm bg-white/20 px-2 py-0.5 rounded ml-1">1 min</span>
+                                </>
+                            ) :
+                                (user ? t('sendOneClick') : t('submit'))
+                        )
                     )}
                 </button>
 

@@ -1,5 +1,5 @@
 import { ReactNode } from 'react';
-import { Shield, LayoutDashboard, FileText, Users, LogOut, MapPin, Building } from 'lucide-react';
+import { Shield, LayoutDashboard, FileText, Users, LogOut, MapPin, Building, BarChart3 } from 'lucide-react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import '../globals.css';
@@ -9,8 +9,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     // Ideally we fetch the user session to display "Hello Admin"
 
     return (
-        <html lang="fr">
-            <body>
+        <html lang="fr" suppressHydrationWarning={true}>
+            <body suppressHydrationWarning={true}>
                 <div className="min-h-screen bg-gray-50 flex font-sans text-slate-900">
                     {/* Sidebar */}
                     <aside className="w-64 bg-slate-900 text-white flex flex-col fixed h-full">
@@ -42,10 +42,30 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
                             <Link
                                 href="/admin/residences"
-                                className="flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-50 hover:text-blue-600 rounded-xl transition-all font-medium"
+                                className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl transition-all font-medium"
                             >
                                 <Building className="w-5 h-5" />
                                 Résidences
+                            </Link>
+
+                            <Link
+                                href="/admin/brands"
+                                className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl transition-all font-medium"
+                            >
+                                <span className="bg-amber-600/20 p-0.5 rounded text-amber-400">
+                                    <BarChart3 className="w-4 h-4" />
+                                </span>
+                                Statistiques Marques
+                            </Link>
+
+                            <Link
+                                href="/admin/users"
+                                className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl transition-all font-medium"
+                            >
+                                <span className="bg-blue-600/20 p-0.5 rounded text-blue-400">
+                                    <Users className="w-4 h-4" />
+                                </span>
+                                Utilisateurs / 360
                             </Link>
 
 

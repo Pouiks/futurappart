@@ -6,7 +6,7 @@ async function main() {
     const { ExcelImportConnector } = await import('../infrastructure/connectors/excel_connector');
 
     const connector = new ExcelImportConnector();
-    const filePath = path.resolve(process.cwd(), 'consolidated_2025-12-21.xlsx');
+    const filePath = path.resolve(process.cwd(), 'consolidated_2026-01-09.xlsx');
 
     console.log("Starting Import Process...");
     try {

@@ -1,11 +1,26 @@
-'use client';
+"use client";
 
-import React from 'react';
+import React, { useActionState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
-import { CheckCircle2, ShieldCheck, Mail, BarChart3, Users, ArrowRight, Wallet, Lock } from 'lucide-react';
+import { CheckCircle2, ShieldCheck, Mail, BarChart3, Users, ArrowRight, Wallet, Lock, Loader2 } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
+import { submitPartnerContact } from '@/app/actions/contact';
+import { toast } from 'sonner';
+
+const initialState = null;
 
 export default function PartnerPage() {
+    const [state, formAction, isPending] = useActionState(submitPartnerContact, initialState);
+
+    // Feedback Effect
+    useEffect(() => {
+        if (state?.success) {
+            toast.success("Votre demande a été envoyée ! Nous vous recontacterons rapidement.");
+        } else if (state?.error) {
+            toast.error(state.error);
+        }
+    }, [state]);
+
     return (
         <div className="min-h-screen bg-white">
 
@@ -260,41 +275,100 @@ export default function PartnerPage() {
                     </p>
 
                     <div className="bg-white p-8 rounded-2xl shadow-xl border border-gray-100 text-left">
-                        <form className="space-y-6">
-                            <div className="grid md:grid-cols-2 gap-6">
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-2">Nom de la résidence / Groupe</label>
-                                    <input type="text" className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition placeholder:text-gray-400 text-gray-900" placeholder="Ex: Groupe Réside Etudes" />
+                        {state?.success ? (
+                            <div className="text-center py-12">
+                                <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <CheckCircle2 className="w-8 h-8" />
                                 </div>
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-2">Ville(s) concernée(s)</label>
-                                    <input type="text" className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition placeholder:text-gray-400 text-gray-900" placeholder="Ex: Lyon, Paris, ..." />
-                                </div>
+                                <h3 className="text-2xl font-bold text-gray-900 mb-2">Demande envoyée !</h3>
+                                <p className="text-gray-600 mb-6">
+                                    Merci de votre intérêt. Notre équipe Partenariats reviendra vers vous sous 24h ouvrées.
+                                </p>
+                                <button onClick={() => window.location.reload()} className="text-blue-600 font-medium hover:underline">
+                                    Envoyer une autre demande
+                                </button>
                             </div>
-
-                            <div className="grid md:grid-cols-2 gap-6">
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-2">Votre Nom</label>
-                                    <input type="text" className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition placeholder:text-gray-400 text-gray-900" placeholder="Jean Dupont" />
+                        ) : (
+                            <form action={formAction} className="space-y-6">
+                                <div className="grid md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">Nom de la résidence / Groupe</label>
+                                        <input
+                                            name="residenceName"
+                                            type="text"
+                                            className={`w-full px-4 py-3 rounded-lg border ${state?.fieldErrors?.residenceName ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} focus:ring-2 outline-none transition placeholder:text-gray-400 text-gray-900`}
+                                            placeholder="Ex: Groupe Réside Etudes"
+                                            required
+                                        />
+                                        {state?.fieldErrors?.residenceName && <p className="text-red-500 text-xs mt-1">{state.fieldErrors.residenceName[0]}</p>}
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">Ville(s) concernée(s)</label>
+                                        <input
+                                            name="cities"
+                                            type="text"
+                                            className={`w-full px-4 py-3 rounded-lg border ${state?.fieldErrors?.cities ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} focus:ring-2 outline-none transition placeholder:text-gray-400 text-gray-900`}
+                                            placeholder="Ex: Lyon, Paris, ..."
+                                            required
+                                        />
+                                        {state?.fieldErrors?.cities && <p className="text-red-500 text-xs mt-1">{state.fieldErrors.cities[0]}</p>}
+                                    </div>
                                 </div>
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-2">Email Professionnel</label>
-                                    <input type="email" className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition placeholder:text-gray-400 text-gray-900" placeholder="jean@groupe.com" />
+
+                                <div className="grid md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">Votre Nom</label>
+                                        <input
+                                            name="name"
+                                            type="text"
+                                            className={`w-full px-4 py-3 rounded-lg border ${state?.fieldErrors?.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} focus:ring-2 outline-none transition placeholder:text-gray-400 text-gray-900`}
+                                            placeholder="Jean Dupont"
+                                            required
+                                        />
+                                        {state?.fieldErrors?.name && <p className="text-red-500 text-xs mt-1">{state.fieldErrors.name[0]}</p>}
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">Email Professionnel</label>
+                                        <input
+                                            name="email"
+                                            type="email"
+                                            className={`w-full px-4 py-3 rounded-lg border ${state?.fieldErrors?.email ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} focus:ring-2 outline-none transition placeholder:text-gray-400 text-gray-900`}
+                                            placeholder="jean@groupe.com"
+                                            required
+                                        />
+                                        {state?.fieldErrors?.email && <p className="text-red-500 text-xs mt-1">{state.fieldErrors.email[0]}</p>}
+                                    </div>
                                 </div>
-                            </div>
 
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-2">Message (Optionnel)</label>
-                                <textarea rows={3} className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition placeholder:text-gray-400 text-gray-900" placeholder="Précisez votre volume de lits ou vos questions..."></textarea>
-                            </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">Message (Optionnel)</label>
+                                    <textarea
+                                        name="message"
+                                        rows={3}
+                                        className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition placeholder:text-gray-400 text-gray-900"
+                                        placeholder="Précisez votre volume de lits ou vos questions..."
+                                    ></textarea>
+                                </div>
 
-                            <button type="submit" className="w-full bg-blue-600 text-white font-bold py-4 rounded-xl hover:bg-blue-700 transition transform active:scale-[0.98] shadow-lg">
-                                Nous contacter
-                            </button>
-                            <p className="text-center text-xs text-gray-400 mt-4">
-                                En cliquant, vous acceptez d'être recontacté par notre équipe. Vos données ne sont pas partagées.
-                            </p>
-                        </form>
+                                <button
+                                    type="submit"
+                                    disabled={isPending}
+                                    className="w-full bg-blue-600 text-white font-bold py-4 rounded-xl hover:bg-blue-700 transition transform active:scale-[0.98] shadow-lg disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                >
+                                    {isPending ? (
+                                        <>
+                                            <Loader2 className="w-5 h-5 animate-spin" />
+                                            Envoi en cours...
+                                        </>
+                                    ) : (
+                                        "Nous contacter"
+                                    )}
+                                </button>
+                                <p className="text-center text-xs text-gray-400 mt-4">
+                                    En cliquant, vous acceptez d'être recontacté par notre équipe. Vos données ne sont pas partagées.
+                                </p>
+                            </form>
+                        )}
                     </div>
                 </div>
             </section>

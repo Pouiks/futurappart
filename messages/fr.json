@@ -189,7 +189,17 @@
         "contact": "Contact"
     },
     "Common": {
-        "loading": "Chargement..."
+        "loading": "Chargement...",
+        "UnitTypes": {
+            "STUDIO": "Studio",
+            "T1": "T1",
+            "T2": "T2",
+            "T3": "T3",
+            "T4": "T4",
+            "T5+": "T5+",
+            "COLOCATION": "Colocation",
+            "COLIVING": "Coliving"
+        }
     },
     "Profile": {
         "title": "Mon Profil & Dossier",
@@ -291,12 +301,14 @@
         "dashboard": "Tableau de bord",
         "logout": "Se déconnecter",
         "favorites": "Mes Favoris",
+        "dossier": "Mon Dossier Locatif",
         "applications": "Mes Candidatures"
     },
     "AccountSidebar": {
         "title": "Mon Espace",
         "profile": "Mon Profil",
         "favorites": "Mes Favoris",
+        "dossier": "Mon Dossier",
         "applications": "Mes Candidatures",
         "logout": "Se déconnecter"
     }

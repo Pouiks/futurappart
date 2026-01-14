@@ -1,15 +1,18 @@
 import { NextResponse } from 'next/server';
-// import { Resend } from 'resend'; 
-// const resend = new Resend(process.env.RESEND_API_KEY);
 import { trackEvent } from '@/lib/tracking';
 import { v4 as uuidv4 } from 'uuid';
 import { prisma } from '@/lib/db';
 import { ResidenceStatus } from '@prisma/client';
+import { emailService } from '@/lib/email';
+import { getSignedDownloadUrl } from '@/lib/storage';
 
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        const { unitId, firstName, lastName, email, phone, hasGuarantor } = body;
+        const { unitId, firstName, lastName, email, phone, hasGuarantor, userId } = body; // Expect userId now if possible, or we resolve it via Profile email? 
+        // Note: The lead form might need to push the userId if available. 
+        // If not available (logged out?), we can't send the dossier easily.
+        // Assuming the user is logged in to "Postuler", they must have a profile.
 
         // --- R1: ELIGIBILITY CHECK ---
         // Basic validation: user profile must be complete
@@ -72,22 +75,97 @@ export async function POST(request: Request) {
         // --- EXECUTION ---
 
         if (action === 'EMAIL') {
-            // Todo: Implement actual email sending via Resend/Nodemailer
-            console.log(`[EMAIL_SENT] To: ${destination} For: ${residence.name}`);
 
-            // Increment Counters (Atomic)
-            await prisma.canonResidence.update({
-                where: { id: residence.id },
-                data: {
-                    leadsSentToday: { increment: 1 },
-                    leadsSentThisWeek: { increment: 1 }
+            // 1. Fetch Full Dossier Data
+            // We need to find the Profile ID. Ideally passed in body, or we search by email
+            const profile = await prisma.profile.findFirst({
+                where: { email: email }, // Assuming unique email provided matches profile
+                include: {
+                    dossierPersons: {
+                        include: {
+                            documents: true
+                        }
+                    }
                 }
-            });
+            }) as any;
+
+            if (profile) {
+                const applicant = profile.dossierPersons.find((p: any) => p.role === 'APPLICANT');
+                const guarantors = profile.dossierPersons.filter((p: any) => p.role === 'GUARANTOR');
+
+                if (applicant) {
+                    // 2. Prepare Documents (Generate Signed URLs)
+                    const documentLinks: any[] = [];
+
+                    // Helper to process docs
+                    const processDocs = async (personName: string, docs: any[]) => {
+                        for (const doc of docs) {
+                            if (doc.status === 'VALID' || true) { // Send all uploaded docs? Or only Valid? Let's send all for now.
+                                const signedUrl = await getSignedDownloadUrl(doc.storagePath);
+                                if (signedUrl) {
+                                    documentLinks.push({
+                                        type: `${doc.type} (${personName})`,
+                                        filename: doc.filename,
+                                        url: signedUrl
+                                    });
+                                }
+                            }
+                        }
+                    };
+
+                    await processDocs('Candidat', applicant.documents);
+                    for (const g of guarantors) {
+                        await processDocs(`Garant (${g.lastName})`, g.documents);
+                    }
+
+                    // 3. Send Email
+                    const emailSent = await emailService.sendDossierEmail({
+                        to: destination,
+                        applicant: {
+                            firstName: applicant.firstName,
+                            lastName: applicant.lastName,
+                            email: profile.email || email,
+                            phone: applicant.phone || phone,
+                            situation: applicant.status,
+                            income: 0 // TODO: Add income to DossierPerson schema or Profile?
+                        },
+                        guarantors: guarantors.map((g: any) => ({
+                            firstName: g.firstName,
+                            lastName: g.lastName,
+                            type: g.guarantorType || 'PHYSIQUE',
+                            income: 0
+                        })),
+                        documents: documentLinks,
+                        residenceName: residence.name,
+                        unitType: unit.type
+                    });
+
+                    if (emailSent) {
+                        console.log(`[EMAIL_SENT] To: ${destination} For: ${residence.name}`);
+                        // Increment Counters (Atomic)
+                        await prisma.canonResidence.update({
+                            where: { id: residence.id },
+                            data: {
+                                leadsSentToday: { increment: 1 },
+                                leadsSentThisWeek: { increment: 1 }
+                            }
+                        });
+                    } else {
+                        console.error('Failed to send email to partner');
+                        // Fallback? Retain "EMAIL" action but notify error?
+                    }
+
+                } else {
+                    console.warn('Applicant not found in profile, sending simple lead notification not supported yet');
+                }
+            } else {
+                console.warn('Profile not found for email, cannot send dossier');
+            }
         }
 
         // [TRACKING]
         trackEvent({
-            eventType: 'request_routed',
+            eventType: 'request_routed' as any,
             sessionId,
             residenceId: residence.id,
             city: residence.cityNormalized,

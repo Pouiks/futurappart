@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "../globals.css";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
+import { Toaster } from "sonner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -17,6 +18,19 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "MonLogementEtudiant - Comparateur de Logement Étudiant 2025",
   description: "Trouvez votre logement étudiant idéal à Lyon, Bordeaux, Paris... Comparez les résidences et trouvez la meilleure offre sans frais cachés.",
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
+      { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
+    ],
+    apple: [
+      { url: '/apple-touch-icon.png' },
+    ],
+    other: [
+      { rel: 'manifest', url: '/site.webmanifest' }
+    ]
+  }
 };
 
 import { NextIntlClientProvider } from 'next-intl';
@@ -85,6 +99,7 @@ export default async function RootLayout({
             {children}
           </main>
           <Footer />
+          <Toaster richColors position="top-center" />
         </NextIntlClientProvider>
       </body>
     </html>

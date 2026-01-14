@@ -1,5 +1,6 @@
 import { useTranslations } from 'next-intl';
 import { Link } from '@/i18n/navigation';
+import Image from 'next/image';
 
 export const Footer = () => {
     const t = useTranslations('Footer');
@@ -11,9 +12,14 @@ export const Footer = () => {
 
                     {/* Brand Column */}
                     <div>
-                        <Link href="/" className="flex items-center gap-2 mb-6 text-white">
-                            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-lg">M</div>
-                            <span className="text-xl font-bold tracking-tight">MonLogementEtudiant</span>
+                        <Link href="/" className="flex items-center gap-2 mb-6 text-white inline-block">
+                            <Image
+                                src="/futurappartlogo.png"
+                                alt="MonLogementEtudiant"
+                                width={200}
+                                height={60}
+                                className="h-20 w-auto object-contain rounded bg-white p-2"
+                            />
                         </Link>
                         <p className="text-gray-400 mb-6 leading-relaxed">
                             {t('description')}
@@ -44,8 +50,10 @@ export const Footer = () => {
                     <div>
                         <h3 className="text-white font-bold text-lg mb-6">{t('legal')}</h3>
                         <ul className="space-y-3">
-                            <li><Link href="/mentions-legales" className="hover:text-blue-400 text-sm">{t('terms')}</Link></li>
-                            <li><Link href="/contact" className="hover:text-blue-400 text-sm">{t('contact')}</Link></li>
+                            <li><Link href="/legals/cgu" className="hover:text-blue-400 text-sm transition-colors">Conditions générales d'utilisation</Link></li>
+                            <li><Link href="/legals/cgv" className="hover:text-blue-400 text-sm transition-colors">Conditions générales de vente</Link></li>
+                            <li><Link href="/legals/politique-confidentialite" className="hover:text-blue-400 text-sm transition-colors">Politique de confidentialité</Link></li>
+                            <li><Link href="/contact" className="hover:text-blue-400 text-sm transition-colors">{t('contact')}</Link></li>
                         </ul>
                     </div>
                 </div>

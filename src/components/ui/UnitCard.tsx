@@ -8,9 +8,10 @@ import { FavoriteButton } from '@/components/features/FavoriteButton';
 interface UnitCardProps {
     unit: any; // Type strictly later
     rank?: number;
+    isFavorite?: boolean;
 }
 
-export const UnitCard: React.FC<UnitCardProps> = ({ unit, rank }) => {
+export const UnitCard: React.FC<UnitCardProps> = ({ unit, rank, isFavorite = false }) => {
     const t = useTranslations('UnitCard');
 
     // Basic heuristics to guess brand (MVP only)
@@ -83,7 +84,7 @@ export const UnitCard: React.FC<UnitCardProps> = ({ unit, rank }) => {
 
             {/* Favorite Button (Top Right) */}
             <div className="absolute top-3 right-3 z-30 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                <FavoriteButton unitId={unit.id} />
+                <FavoriteButton unitId={unit.id} initialIsFavorite={isFavorite} />
             </div>
 
             {/* Image Section (Top, Full Width) */}
@@ -109,7 +110,7 @@ export const UnitCard: React.FC<UnitCardProps> = ({ unit, rank }) => {
             <div className="flex-1 p-5 md:p-6 flex flex-col">
                 <div className="flex justify-between items-start mb-3">
                     <Link href={`/logement/${unit.id}`} className="block group/title flex-1 pr-3">
-                        <h3 className="text-xl font-bold text-gray-900 leading-snug group-hover/title:text-blue-600 transition cursor-pointer line-clamp-1 mb-1">
+                        <h3 className="text-xl font-bold text-gray-900 leading-snug group-hover/title:text-blue-600 transition cursor-pointer mb-1">
                             {cleanName}
                         </h3>
                         <p className="text-sm text-gray-500">

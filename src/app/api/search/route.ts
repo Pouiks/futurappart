@@ -2,9 +2,18 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { ScoringService, UserCriteria } from '@/core/scoring';
 import { AvailabilityEnum, UnitTypeEnum } from '@prisma/client';
+import { demoUnits } from '@/lib/demoData';
 import { trackEvent } from '@/lib/tracking';
 import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
+
+// Helper to safely convert Decimal or number to plain number
+const toNumber = (val: any): number => {
+    if (val && typeof val === 'object' && typeof val.toNumber === 'function') {
+        return val.toNumber();
+    }
+    return Number(val);
+};
 
 const SearchSchema = z.object({
     city: z.string(),
@@ -42,22 +51,34 @@ export async function POST(request: Request) {
         });
 
 
-        // 2. Fetch Candidates
-        // Optimization: Filter at DB level for Hard Constraints
-        console.log(`[SEARCH] Normalized City: '${cityNormalized}'`);
-        console.log(`[SEARCH] Criteria:`, JSON.stringify(criteria));
-
-        const candidates = await prisma.canonUnit.findMany({
-            where: {
-                residence: { cityNormalized: cityNormalized },
-                price: { lte: criteria.budgetMax },
-                surface: { gte: criteria.minSurface }, // Filter by min surface
-                type: { in: criteria.types },
-            },
-            include: {
-                residence: true
-            }
-        });
+        // 2. Fetch Candidates (Demo Mode Support)
+        // If NEXT_PUBLIC_DEMO_MODE is true, use static mock data instead of DB query.
+        const isDemo = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
+        let candidates;
+        if (isDemo) {
+            // Simple filter on mock units matching criteria
+            candidates = demoUnits.filter(u => {
+                const matchesCity = u.residence.cityNormalized === cityNormalized;
+                const matchesPrice = u.price <= criteria.budgetMax;
+                const matchesSurface = (u.surface ?? 0) >= criteria.minSurface;
+                const matchesType = criteria.types.includes(u.type as any);
+                return matchesCity && matchesPrice && matchesSurface && matchesType;
+            });
+        } else {
+            console.log(`[SEARCH] Normalized City: '${cityNormalized}'`);
+            console.log(`[SEARCH] Criteria:`, JSON.stringify(criteria));
+            candidates = await prisma.canonUnit.findMany({
+                where: {
+                    residence: { cityNormalized: cityNormalized },
+                    price: { lte: criteria.budgetMax },
+                    surface: { gte: criteria.minSurface }, // Filter by min surface
+                    type: { in: criteria.types },
+                },
+                include: {
+                    residence: true
+                }
+            });
+        }
 
         console.log(`[SEARCH] Candidates found: ${candidates.length}`);
 
@@ -97,14 +118,14 @@ export async function POST(request: Request) {
                 const medianPrice = prices[Math.floor(prices.length / 2)];
 
                 // Simple median logic for surface/priceM2
-                const surfacable = typeCandidates.filter(c => c.surface && c.surface.toNumber() > 0);
+                const surfacable = typeCandidates.filter(c => toNumber(c.surface) > 0);
                 let medianSurface = 0;
                 let medianPriceM2 = 0;
 
                 if (surfacable.length > 0) {
-                    const surfaces = surfacable.map(u => u.surface!.toNumber()).sort((a, b) => a - b);
+                    const surfaces = surfacable.map(u => toNumber(u.surface)).sort((a, b) => a - b);
                     medianSurface = surfaces[Math.floor(surfaces.length / 2)];
-                    const m2Prices = surfacable.map(u => u.price / u.surface!.toNumber()).sort((a, b) => a - b);
+                    const m2Prices = surfacable.map(u => u.price / toNumber(u.surface)).sort((a, b) => a - b);
                     medianPriceM2 = m2Prices[Math.floor(m2Prices.length / 2)];
                 }
 
@@ -123,11 +144,11 @@ export async function POST(request: Request) {
             const unitData = {
                 id: unit.id,
                 price: unit.price,
-                surface: unit.surface ? unit.surface.toNumber() : null,
-                priceM2: (unit.surface && unit.surface.toNumber() > 0) ? unit.price / unit.surface.toNumber() : null,
-                availability: unit.availability,
+                surface: toNumber(unit.surface),
+                priceM2: (toNumber(unit.surface) > 0) ? unit.price / toNumber(unit.surface) : null,
+                availability: unit.availability ?? null,
                 trustScore: unit.residence.trustScore || 50,
-                residenceStatus: unit.residence.status, // Pass status for Bonus P1
+                residenceStatus: unit.residence.status as any, // Cast to any for compatibility
                 cityStats: {
                     medianPrice: typeStats.medianPrice,
                     medianPriceM2: typeStats.medianPriceM2,
@@ -159,7 +180,7 @@ export async function POST(request: Request) {
             scoreDetails: u.scoreResult.details, // Pass details for tooltip
             reasons: u.scoreResult.reasons,
             url: u.residence.url,
-            photo: "https://placehold.co/600x400?text=Logement", // Placeholder for MVP
+            photo: (u.images && u.images.length > 0) ? u.images[0] : (u.residence.heroImageUrl || "https://placehold.co/600x400?text=Logement"),
             residenceId: u.residence.id
         }));
 
@@ -195,12 +216,33 @@ export async function POST(request: Request) {
             });
         });
 
+        // ... (previous code)
+
+        // 6. Availability Stats for UX (Dynamic Bounds)
+        // We aggregate stats for the WHOLE city to inform users about availability ranges
+        const availabilityStats = await prisma.canonUnit.aggregate({
+            where: {
+                residence: { cityNormalized: cityNormalized }
+            },
+            _min: { price: true, surface: true },
+            _max: { price: true, surface: true }
+        });
+
+        const safeMinSurface = availabilityStats._min.surface ? availabilityStats._min.surface.toNumber() : 0;
+        const safeMaxSurface = availabilityStats._max.surface ? availabilityStats._max.surface.toNumber() : 60;
+
         return NextResponse.json({
             recommendations: recommendations,
             others: others,
             meta: {
                 total: candidates.length,
-                city: cityNormalized
+                city: cityNormalized,
+                cityStats: {
+                    minPrice: availabilityStats._min.price || 300,
+                    maxPrice: availabilityStats._max.price || 2000,
+                    minSurface: safeMinSurface,
+                    maxSurface: safeMaxSurface
+                }
             }
         });
 

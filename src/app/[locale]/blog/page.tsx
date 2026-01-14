@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/db';
 import { Link } from '@/i18n/navigation';
-import Header from '@/components/layout/Header';
-import Footer from '@/components/layout/Footer';
+import { Navbar } from '@/components/layout/Navbar';
+import { Footer } from '@/components/layout/Footer';
 import { notFound } from 'next/navigation';
 import { Calendar, User } from 'lucide-react';
 
@@ -16,7 +16,7 @@ export default async function BlogIndexPage() {
 
     return (
         <div className="min-h-screen bg-white">
-            <Header />
+            <Navbar />
 
             <main className="pt-32 pb-20">
                 <div className="container mx-auto px-4">

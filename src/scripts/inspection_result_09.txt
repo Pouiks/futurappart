@@ -1,0 +1,24 @@
+SHEET_NAMES:
+[
+  "Résidences",
+  "Typologies",
+  "Stats par Site",
+  "Stats par Ville"
+]
+
+--- SHEET: Résidences ---
+HEADERS: ["Source","Nom","Ville","Adresse","Prix Min","Devise","Prix Min (€)","Statut","Nb Logements","URL","Image","Description","Équipements","Alertes"]
+FIRST_ROW: ["Colonies","Aix Asters - Flatshare in Aix-en-Provence - Colonies","Aix-en-Provence","4 rue Marcel Arnaud13100  Aix-en-Provence",637,"EUR",637,"Disponible",1,"https://www.livecolonies.com/colocation/single-house?id=UmVzaWRlbmNlLTI2Mw==&city=Aix-en-Provence&available_only=true","https://mothership-production-public.s3.eu-west-3.amazonaws.com/y8nhbizx1ck7u1m1aa1trhcyiv3r","","",""]
+
+--- SHEET: Typologies ---
+HEADERS: ["Source","Résidence","Ville","Type","Surface (m²)","Surface Max (m²)","Prix","Devise","Prix (€)","Statut","Description","Équipements","Images","Alertes"]
+FIRST_ROW: ["Colonies","Aix Asters - Flatshare in Aix-en-Provence - Colonies","Aix-en-Provence","Chambre 3",10,null,637,"EUR",637,"Disponible","","Eau, Électricité, Internet, Chauffage, Eau, Électricité, Chauffage, Internet, Centre d'aide","https://mothership-production-public.s3.eu-west-3.amazonaws.com/y8nhbizx1ck7u1m1aa1trhcyiv3r, https://mothership-production-public.s3.eu-west-3.amazonaws.com/x5eolwgqlloodh6nwbpsr1enxsp6, https://mothership-production-public.s3.eu-west-3.amazonaws.com/la4bcyh7qyuattu7pjkyipjk1tk3",""]
+
+--- SHEET: Stats par Site ---
+HEADERS: ["Site","Devise","Nb Résidences","Nb Typologies","Disponibles","Complètes","Alertes","Prix Min","Prix Max","Prix Moyen"]
+FIRST_ROW: ["Colonies","EUR",234,366,232,2,2,490,1790,777]
+
+--- SHEET: Stats par Ville ---
+HEADERS: ["Ville","Nb Sites","Nb Résidences","Nb Complètes","Prix Min","Prix Moyen"]
+FIRST_ROW: ["Paris",6,201,31,590,894]
+

@@ -11,7 +11,11 @@ export interface ParsedUnit {
     url: string;
     unitTypeRaw?: string;
     availabilityRaw?: string;
+    description?: string;
+    amenities?: string[];
+    images?: string[];
     source: string;
+    brandName?: string;
 }
 
 export interface Connector {

@@ -5,10 +5,13 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { Check, Star, Ruler, Euro, ArrowLeft, MapPin, Wifi, Shield, Train, Sofa, Shirt, Bike } from 'lucide-react';
 import Link from 'next/link';
+import { FavoriteButton } from '@/components/features/FavoriteButton';
 import { ResidenceMapWrapper } from '@/components/features/ResidenceMapWrapper';
 import { ScoringService } from '@/core/scoring';
 import { StickySubNav } from '@/components/features/StickySubNav';
 import { SubscriptionCTA } from '@/components/features/SubscriptionCTA';
+import { ImageGallery } from '@/components/features/ImageGallery';
+import ResidenceTracker from '@/components/tracking/ResidenceTracker';
 
 interface PageProps {
     params: Promise<{ id: string; locale: string }>;
@@ -51,14 +54,55 @@ export default async function LogementPage({ params }: PageProps) {
     );
     const { data: { user } } = await supabase.auth.getUser();
 
-    // Fetch Profile for Completion Check
+    // Fetch Profile & Favorite Status
     let isProfileComplete = false;
+    let isFavorite = false;
+    let firstName = 'Étudiant';
+    const missingFields: string[] = [];
+    let existingRequest: any = null;
+
     if (user) {
-        const profile = await prisma.profile.findUnique({
-            where: { id: user.id },
-            include: { guarantors: true }
-        });
-        isProfileComplete = !!(profile?.income && profile.income > 0 && profile.guarantors && profile.guarantors.length > 0);
+        const [profile, favorite, req] = await Promise.all([
+            prisma.profile.findUnique({
+                where: { id: user.id },
+                include: { dossierPersons: true }
+            }),
+            prisma.favorite.findUnique({
+                where: {
+                    userId_unitId: {
+                        userId: user.id,
+                        unitId: id
+                    }
+                }
+            }),
+            prisma.subscriptionRequest.findFirst({
+                where: {
+                    userId: user.id,
+                    unitId: id
+                }
+            })
+        ]);
+
+        existingRequest = req;
+
+        // Determine First Name
+        if (profile?.firstName) firstName = profile.firstName;
+        else if (user.user_metadata?.first_name) firstName = user.user_metadata.first_name;
+
+        // Check for Guarantor in Dossier (New System)
+        const hasGuarantor = profile?.dossierPersons?.some(p => p.role === 'GUARANTOR');
+        if (!hasGuarantor) missingFields.push('garants');
+
+        // Missing Fields Calculation
+        // Income is only strictly required > 0 if the user does NOT have a guarantor (e.g. Employee self-guaranteeing)
+        // If they have a guarantor (e.g. Student), 0 income is acceptable.
+        if ((!profile?.income || profile.income <= 0) && !hasGuarantor) {
+            missingFields.push('revenus');
+        }
+
+        isProfileComplete = missingFields.length === 0;
+        isFavorite = !!favorite;
+
     }
 
     const unit = await prisma.canonUnit.findUnique({
@@ -92,36 +136,25 @@ export default async function LogementPage({ params }: PageProps) {
         trustScore: unit.residence.trustScore || 50
     } as any, { priority: 'BALANCE' });
 
-    // Helper to generate a consistent gallery based on ID
-    const getGalleryImages = (type: string, id: string) => {
-        const t = type.toUpperCase();
-        const baseImages = [
-            "/assets/default_studio.png",
-            "/assets/student_studio_modern.png",
-            "/assets/student_studio_cozy.png",
-            "/assets/student_studio_minimal.png"
-        ];
+    // Real Gallery
+    const gallery = unit.images && unit.images.length > 0 ? unit.images : [
+        "/assets/default_studio.png",
+        "/assets/student_studio_modern.png",
+        "/assets/student_studio_minimal.png"
+    ];
 
-        // Simple hash of ID to pick start index
-        const seed = id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-
-        // Coloc logic
-        if (t.includes('COLOC') || t.includes('T3')) {
-            return ["/assets/default_coloc.png", "/assets/student_studio_modern.png", "/assets/student_studio_minimal.png"];
-        }
-
-        const start = seed % baseImages.length;
-        const gallery = [];
-        for (let i = 0; i < 3; i++) {
-            gallery.push(baseImages[(start + i) % baseImages.length]);
-        }
-        return gallery;
-    };
-
-    const gallery = getGalleryImages(unit.type, unit.id);
+    // Ensure at least 3 images for the grid
+    while (gallery.length < 3) {
+        gallery.push(gallery[0]);
+    }
 
     return (
         <main className="min-h-screen bg-gray-50 pb-20">
+            <ResidenceTracker
+                residenceId={unit.residence.id}
+                residenceName={unit.residence.name}
+                city={unit.residence.cityNormalized}
+            />
             {/* Secondary Sticky Nav */}
             <StickySubNav />
 
@@ -136,9 +169,12 @@ export default async function LogementPage({ params }: PageProps) {
                         <button className="hidden sm:flex items-center gap-2 text-sm font-bold text-gray-600 hover:text-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition border border-transparent hover:border-blue-100">
                             Partager
                         </button>
-                        <button className="hidden sm:flex items-center gap-2 text-sm font-bold text-gray-600 hover:text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-50 transition border border-transparent hover:border-red-100">
-                            Sauvegarder
-                        </button>
+                        {/* Favorite Button (Header) */}
+                        <FavoriteButton
+                            unitId={unit.id}
+                            initialIsFavorite={isFavorite}
+                            showLabel
+                        />
                     </div>
                 </div>
             </div>
@@ -150,51 +186,16 @@ export default async function LogementPage({ params }: PageProps) {
 
                     {/* SECTION: ATOUTS / HIGHLIGHTS - HERO GRID */}
                     <section id="highlights" className="space-y-6 scroll-mt-40">
-                        {/* Bento Grid Gallery */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-[500px] md:h-[450px] rounded-3xl overflow-hidden shadow-sm border border-gray-100 bg-white p-1">
-                            {/* Main Large Image */}
-                            <div className="relative h-[300px] md:h-full md:col-span-1 rounded-2xl overflow-hidden group cursor-pointer">
-                                <img
-                                    src={gallery[0]}
-                                    alt={`${unit.residence.name} - Vue principale`}
-                                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                                />
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-60" />
-                                <div className="absolute bottom-4 left-4">
-                                    <span className="bg-white/90 backdrop-blur-md px-3 py-1 rounded-full text-xs font-extrabold text-blue-900 shadow-sm uppercase tracking-wider">
-                                        Principal
-                                    </span>
-                                </div>
-                            </div>
-
-                            {/* Secondary Column */}
-                            <div className="grid grid-cols-2 md:grid-cols-1 gap-4 h-full">
-                                {/* Top Right */}
-                                <div className="relative h-full rounded-2xl overflow-hidden group cursor-pointer">
-                                    <img
-                                        src={gallery[1]}
-                                        alt="Cuisine / Bureau"
-                                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                                    />
-                                </div>
-                                {/* Bottom Right */}
-                                <div className="relative h-full rounded-2xl overflow-hidden group cursor-pointer">
-                                    <div className="absolute inset-0 bg-gray-900/10 group-hover:bg-transparent transition-colors z-10" />
-                                    <img
-                                        src={gallery[2]}
-                                        alt="Détail"
-                                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                                    />
-                                    <div className="absolute bottom-4 right-4 z-20">
-                                        <button className="bg-white text-gray-900 px-4 py-2 rounded-lg text-xs font-bold shadow-lg flex items-center gap-2 hover:bg-gray-50 transition">
-                                            <span className="hidden sm:inline">Voir les</span> photos
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                        {/* Interactive Gallery */}
+                        <ImageGallery
+                            images={gallery}
+                            unitId={unit.id}
+                            isFavorite={isFavorite}
+                            residenceName={unit.residence.name}
+                        />
 
                         {/* Title & Badge Header */}
+
                         <div className="flex flex-col md:flex-row justify-between items-start gap-4">
                             <div>
                                 <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 leading-tight">
@@ -245,8 +246,10 @@ export default async function LogementPage({ params }: PageProps) {
                                 <div className="w-12 h-12 rounded-full bg-yellow-50 flex items-center justify-center mb-3 group-hover:bg-yellow-100 transition-colors">
                                     <Star className="w-6 h-6 text-yellow-500 fill-yellow-500" />
                                 </div>
-                                <span className="text-3xl font-extrabold text-gray-900 tracking-tight">{scoreResult.totalScore}/100</span>
-                                <span className="text-xs text-gray-500 uppercase font-bold tracking-wider mt-1">Score Qualité</span>
+                                <span className="text-xl md:text-2xl font-extrabold text-gray-900 tracking-tight leading-tight">
+                                    {scoreResult.reasons.length > 0 ? scoreResult.reasons[0] : "Vérifié"}
+                                </span>
+                                <span className="text-xs text-gray-500 uppercase font-bold tracking-wider mt-1">Atout Principal</span>
                             </div>
                         </div>
                     </section>
@@ -254,11 +257,15 @@ export default async function LogementPage({ params }: PageProps) {
                     {/* SECTION: DESCRIPTION */}
                     <section id="description" className="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm scroll-mt-40">
                         <h2 className="text-2xl font-bold text-gray-900 mb-6">À propos du logement</h2>
-                        <p className="text-gray-600 leading-relaxed text-lg">
-                            Ce logement étudiant idéalement situé à {unit.residence.cityNormalized} offre un cadre de vie parfait pour réussir ses études.
-                            Proche des transports et des écoles, la résidence {unit.residence.name} propose des services adaptés aux besoins des étudiants.
-                            Profitez d'un environnement calme et sécurisé, propice au travail et à la détente.
-                        </p>
+                        <div className="text-gray-600 leading-relaxed text-lg whitespace-pre-line">
+                            {unit.description ? unit.description : (
+                                <p>
+                                    Ce logement étudiant idéalement situé à {unit.residence.cityNormalized} offre un cadre de vie parfait pour réussir ses études.
+                                    Proche des transports et des écoles, la résidence {unit.residence.name} propose des services adaptés aux besoins des étudiants.
+                                    Profitez d'un environnement calme et sécurisé, propice au travail et à la détente.
+                                </p>
+                            )}
+                        </div>
                     </section>
 
                     {/* SECTION: EQUIPEMENTS */}
@@ -268,14 +275,14 @@ export default async function LogementPage({ params }: PageProps) {
                             <span className="bg-green-100 text-green-700 text-xs px-3 py-1 rounded-full uppercase tracking-wider">Premium</span>
                         </h2>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                            {['Wifi Haut Débit', 'Sécurisé', 'Proche Métro', 'Meublé', 'Laverie', 'Local Vélo', 'Salle de Sport', 'Espace Coworking'].map((s, i) => {
+                            {(unit.amenities && Array.isArray(unit.amenities) && unit.amenities.length > 0 ? (unit.amenities as string[]) : ['Wifi Haut Débit', 'Sécurisé', 'Proche Métro', 'Meublé', 'Laverie', 'Local Vélo', 'Salle de Sport', 'Espace Coworking']).map((s, i) => {
                                 let Icon = Check;
                                 let colorClass = "text-green-600";
-                                if (s.includes('Wifi')) Icon = Wifi;
-                                if (s.includes('Sécurisé')) { Icon = Shield; colorClass = "text-blue-600"; }
-                                if (s.includes('Métro')) { Icon = Train; colorClass = "text-red-600"; }
+                                if (s.includes('Wifi') || s.includes('Internet')) Icon = Wifi;
+                                if (s.includes('Sécurisé') || s.includes('Gardien')) { Icon = Shield; colorClass = "text-blue-600"; }
+                                if (s.includes('Métro') || s.includes('Transport') || s.includes('Bus')) { Icon = Train; colorClass = "text-red-600"; }
                                 if (s.includes('Meublé')) { Icon = Sofa; colorClass = "text-orange-600"; }
-                                if (s.includes('Laverie')) { Icon = Shirt; colorClass = "text-cyan-600"; }
+                                if (s.includes('Laverie') || s.includes('Linge')) { Icon = Shirt; colorClass = "text-cyan-600"; }
                                 if (s.includes('Vélo')) { Icon = Bike; colorClass = "text-indigo-600"; }
                                 return (
                                     <div key={i} className="flex flex-col items-center p-4 rounded-xl bg-gray-50 border border-gray-100 hover:border-blue-200 hover:bg-blue-50 transition-colors text-center group cursor-default">
@@ -314,6 +321,9 @@ export default async function LogementPage({ params }: PageProps) {
                             user={user}
                             locale={locale}
                             isProfileComplete={isProfileComplete}
+                            firstName={firstName}
+                            missingFields={missingFields}
+                            isAlreadySent={!!existingRequest}
                         />
                         <div className="mt-6 pt-6 border-t border-gray-100 bg-white p-6 rounded-3xl shadow-sm">
                             <h3 className="font-bold text-gray-900 mb-3 text-sm">Pourquoi réserver ici ?</h3>

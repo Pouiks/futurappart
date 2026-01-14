@@ -5,6 +5,7 @@ import { Link, usePathname, useRouter } from '@/i18n/navigation';
 import { UserMenu } from './UserMenu';
 import { useSearchParams } from 'next/navigation';
 import { ChevronDown, BookOpen, Coins, ShieldCheck, HelpCircle, Briefcase, MapPin } from 'lucide-react';
+import Image from 'next/image';
 
 interface NavbarProps {
     counts?: {
@@ -27,17 +28,21 @@ export const Navbar = ({ counts, alerts }: NavbarProps) => {
 
     return (
         <header className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-b border-gray-100 transition-all duration-300">
-            <div className="container mx-auto px-4 md:px-8 max-w-[1600px] h-20 flex items-center justify-between">
+            <div className="container mx-auto px-4 md:px-8 max-w-[1600px] py-6 flex items-center justify-between">
+
+
 
                 {/* Logo */}
                 <Link href="/" className="flex items-center gap-2 group flex-shrink-0">
-                    <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-lg group-hover:scale-105 transition-transform">
-                        M
-                    </div>
-                    <span className="text-xl font-extrabold text-gray-900 tracking-tight flex items-center gap-2">
-                        <span>MonLogement<span className="text-blue-600">Etudiant</span></span>
-                        <span className="bg-yellow-100 text-yellow-800 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">BETA</span>
-                    </span>
+                    <Image
+                        src="/futurappartlogo.png"
+                        alt="MonLogementEtudiant"
+                        width={300}
+                        height={100}
+                        className="h-16 w-auto object-contain"
+                        priority
+                    />
+                    <span className="sr-only">MonLogementEtudiant</span>
                 </Link>
 
                 {/* Desktop Navigation (Centered & Grouped) */}

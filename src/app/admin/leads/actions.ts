@@ -146,10 +146,13 @@ export async function getLeadsReport(filter: {
 
 export async function getPartners() {
     // Get unique sourceIds from CanonResidences
-    // This assumes sourceId = Partner/Brand
     const partners = await prisma.canonResidence.findMany({
         select: { sourceId: true },
         distinct: ['sourceId']
     });
-    return partners.map(p => p.sourceId);
+
+    return partners.map(p => ({
+        id: p.sourceId,
+        name: p.sourceId.replace(/_/g, ' ').replace("canonical", "").trim() // Simple format
+    }));
 }

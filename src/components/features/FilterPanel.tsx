@@ -1,22 +1,32 @@
+
 import React, { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
-
 import { useSearchParams } from 'next/navigation';
+
+import { CITIES, UNIT_TYPES, PRIORITIES } from '@/lib/search-constants';
 
 interface FilterPanelProps {
     onSearch: (filters: any) => void;
+    cities?: { title: string; slug: string }[];
+    stats?: {
+        minPrice: number;
+        maxPrice: number;
+        minSurface: number;
+        maxSurface: number;
+    } | null;
 }
 
-export const FilterPanel: React.FC<FilterPanelProps> = ({ onSearch }) => {
+export const FilterPanel: React.FC<FilterPanelProps> = ({ onSearch, cities = [], stats }) => {
     const t = useTranslations('Search.filters');
+    const tCommon = useTranslations('Common');
     const searchParams = useSearchParams();
 
+    // Initialize state from URL or defaults
     const [city, setCity] = useState(searchParams.get('city') || 'lyon');
     const [budget, setBudget] = useState(Number(searchParams.get('budgetMax')) || 800);
     const [minSurface, setMinSurface] = useState(Number(searchParams.get('minSurface')) || 15);
 
-    // Parse types from URL (comma separated or multiple params? usually comma in simple apps, but let's assume standard behavior checks)
-    // Here we'll handle simple single strings or assume defaults if parsing fails
+    // Parse types from URL
     const typesParam = searchParams.get('types');
     const initialTypes = typesParam ? typesParam.split(',').filter(Boolean) : ['STUDIO', 'COLOCATION'];
     const [types, setTypes] = useState<string[]>(initialTypes);
@@ -27,7 +37,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({ onSearch }) => {
         onSearch({ city, budgetMax: budget, minSurface, types, priority });
     };
 
-    // Debounce logic could go here or in parent
+    // Debounce logic
     useEffect(() => {
         const timer = setTimeout(() => {
             handleSearch();
@@ -54,12 +64,15 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({ onSearch }) => {
                             onChange={e => setCity(e.target.value)}
                             className="w-full border-gray-300 rounded-md border p-2 focus:ring-blue-500 focus:border-blue-500 appearance-none bg-white cursor-pointer hover:border-blue-300 transition-colors"
                         >
-                            <option value="lyon">Lyon</option>
-                            <option value="bordeaux">Bordeaux</option>
-                            <option value="paris">Paris</option>
-                            <option value="marseille">Marseille</option>
-                            <option value="lille">Lille</option>
-                            <option value="toulouse">Toulouse</option>
+                            {cities.length > 0 ? (
+                                cities.map(c => (
+                                    <option key={c.slug} value={c.slug}>{c.title}</option>
+                                ))
+                            ) : (
+                                CITIES.map(c => (
+                                    <option key={c.slug} value={c.slug}>{c.title}</option>
+                                ))
+                            )}
                         </select>
                         <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-gray-500">
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
@@ -80,6 +93,12 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({ onSearch }) => {
                         onChange={e => setBudget(Number(e.target.value))}
                         className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600 hover:accent-blue-700"
                     />
+                    {stats && (
+                        <div className="text-xs text-gray-500 mt-1 flex justify-between px-1">
+                            <span>Min dispo: {stats.minPrice}€</span>
+                            <span>Max: {stats.maxPrice}€</span>
+                        </div>
+                    )}
                 </div>
 
                 {/* Surface Min */}
@@ -95,19 +114,25 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({ onSearch }) => {
                         onChange={e => setMinSurface(Number(e.target.value))}
                         className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600 hover:accent-blue-700"
                     />
+                    {stats && (
+                        <div className="text-xs text-gray-500 mt-1 flex justify-between px-1">
+                            <span>Min dispo: {stats.minSurface}m²</span>
+                            <span>Max: {stats.maxSurface}m²</span>
+                        </div>
+                    )}
                 </div>
 
                 {/* Types */}
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">{t('type')}</label>
                     <div className="flex flex-wrap gap-2">
-                        {['STUDIO', 'COLOCATION', 'COLIVING'].map(type => (
+                        {UNIT_TYPES.map(type => (
                             <button
                                 key={type}
                                 onClick={() => toggleType(type)}
                                 className={`px-3 py-1 text-sm rounded-full border transition-colors cursor-pointer ${types.includes(type) ? 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700' : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300 hover:bg-gray-50'}`}
                             >
-                                {type}
+                                {tCommon(`UnitTypes.${type}`)}
                             </button>
                         ))}
                     </div>

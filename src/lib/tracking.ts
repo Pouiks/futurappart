@@ -1,48 +1,47 @@
-import { prisma } from '@/lib/db';
+'use server';
 
-export type EventType =
-    | 'search_submitted'
-    | 'recommendation_shown'
-    | 'cta_clicked'
-    | 'account_created'
-    | 'request_sent'
-    | 'partner_activated';
-
-interface TrackEventParams {
-    eventType: EventType;
-    sessionId: string;
-    userId?: string | null;
-    residenceId?: string | null;
-    city?: string | null;
-    metadata?: Record<string, any>;
-}
+import { prisma } from './db';
+import { headers } from 'next/headers';
+import { v4 as uuidv4 } from 'uuid';
 
 /**
- * Centralized tracking helper.
- * Always running on server-side (Server Actions or API Routes).
+ * Track a user event (Server Action)
+ * Can be called from Client Components or Server Components.
  */
-export async function trackEvent({
-    eventType,
-    sessionId,
-    userId,
-    residenceId,
-    city,
-    metadata = {}
-}: TrackEventParams) {
+export async function trackEvent(data: {
+    eventType: string;
+    userId?: string;
+    residenceId?: string;
+    city?: string;
+    sessionId?: string;
+    metadata?: any;
+}) {
     try {
+        const headersList = await headers();
+        const userAgent = headersList.get('user-agent') || 'unknown';
+
+        // Simple session ID strategy (cookie or header would be better, but MVP)
+        // Ideally tracking happens via a specialized analytics provider, but for internal:
+        // We rely on client passing sessionId or we generate one here if we had cookies.
+        // For now, let's allow passing sessionId or default to 'anonymous'.
+
+        const sessionId = 'anonymous'; // TODO: Cookie based session
+
         await prisma.event.create({
             data: {
-                eventType,
-                sessionId,
-                userId: userId || null, // Ensure explicit null if undefined
-                residenceId: residenceId || null,
-                city,
-                metadata
+                eventType: data.eventType,
+                userId: data.userId || null,
+                sessionId: sessionId,
+                residenceId: data.residenceId || null,
+                city: data.city || null,
+                metadata: {
+                    ...data.metadata,
+                    userAgent
+                }
             }
         });
-        // console.log(`[TRACKING] ${eventType} tracked.`);
-    } catch (error) {
-        // Fail silently to not impact user experience, but log error
-        console.error(`[TRACKING ERROR] Failed to track ${eventType}:`, error);
+    } catch (e) {
+        console.error("Tracking Error:", e);
+        // Fail silently to not block UI
     }
 }

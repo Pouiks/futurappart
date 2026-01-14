@@ -7,16 +7,18 @@ import { updateResidenceConfig } from './actions';
 interface EditResidenceModalProps {
     isOpen: boolean;
     onClose: () => void;
-    residence: any; // Using any for simplicity as per existing pattern, but ideally formatted type
+    residence: any;
+    brandEntities?: { id: string, name: string }[];
 }
 
-export default function EditResidenceModal({ isOpen, onClose, residence }: EditResidenceModalProps) {
+export default function EditResidenceModal({ isOpen, onClose, residence, brandEntities }: EditResidenceModalProps) {
     const [formData, setFormData] = useState({
         name: '',
         address: '',
         cityNormalized: '',
         notificationEmail: '',
-        price: ''
+        price: '',
+        brandId: ''
     });
     const [saving, setSaving] = useState(false);
 
@@ -27,7 +29,8 @@ export default function EditResidenceModal({ isOpen, onClose, residence }: EditR
                 address: residence.address || '',
                 cityNormalized: residence.cityNormalized === 'unknown' ? '' : (residence.cityNormalized || ''),
                 notificationEmail: residence.notificationEmail || '',
-                price: residence.isInherited ? '' : (residence.leadPrice?.toString() || '')
+                price: residence.isInherited ? '' : (residence.leadPrice?.toString() || ''),
+                brandId: residence.brand?.id || residence.brandId || ''
             });
         }
     }, [residence]);
@@ -41,9 +44,10 @@ export default function EditResidenceModal({ isOpen, onClose, residence }: EditR
         await updateResidenceConfig(residence.id, {
             name: formData.name,
             address: formData.address,
-            cityNormalized: formData.cityNormalized || 'unknown', // Fallback to unknown if empty, OR maybe user wants empty?
+            cityNormalized: formData.cityNormalized || 'unknown',
             notificationEmail: formData.notificationEmail,
-            leadPrice: pricePayload
+            leadPrice: pricePayload,
+            brandId: formData.brandId || null
         });
 
         setSaving(false);
@@ -111,6 +115,22 @@ export default function EditResidenceModal({ isOpen, onClose, residence }: EditR
                                 placeholder="contact@..."
                                 className="w-full text-sm border-slate-300 rounded-xl shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2.5"
                             />
+                        </div>
+                        <div className="md:col-span-2">
+                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5 ml-1">Marque associée</label>
+                            <select
+                                value={formData.brandId}
+                                onChange={(e) => setFormData({ ...formData, brandId: e.target.value })}
+                                className="w-full text-sm border-slate-300 rounded-xl shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2.5"
+                            >
+                                <option value="">Aucune (Hérité du Partenaire)</option>
+                                {brandEntities?.map((brand: any) => (
+                                    <option key={brand.id} value={brand.id}>{brand.name}</option>
+                                ))}
+                            </select>
+                            <p className="text-[10px] text-slate-400 mt-1 ml-1">
+                                Associez une marque pour désactiver l'affichage "Import Excel" et utiliser les infos de la marque.
+                            </p>
                         </div>
                     </div>
 

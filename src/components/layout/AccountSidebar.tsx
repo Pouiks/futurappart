@@ -2,11 +2,15 @@
 
 import { Link, usePathname } from '@/i18n/navigation';
 import { useTranslations } from 'next-intl';
-import { User, Heart, FileText, Settings, LogOut } from 'lucide-react';
+import { User, Heart, FileText, Settings, LogOut, Folder } from 'lucide-react';
 import { createBrowserClient } from '@supabase/ssr';
 import { useRouter } from 'next/navigation';
 
-export const AccountSidebar = () => {
+interface AccountSidebarProps {
+    favoritesCount?: number;
+}
+
+export const AccountSidebar = ({ favoritesCount = 0 }: AccountSidebarProps) => {
     const t = useTranslations('AccountSidebar');
     const pathname = usePathname();
     const router = useRouter();
@@ -23,8 +27,13 @@ export const AccountSidebar = () => {
     };
 
     const navItems = [
-        { label: t('profile'), href: "/account", icon: User },
-        { label: t('favorites'), href: "/account/favorites", icon: Heart },
+        { label: t('dossier'), href: "/account/dossier", icon: Folder },
+        {
+            label: t('favorites'),
+            href: "/account/favorites",
+            icon: Heart,
+            badge: favoritesCount > 0 ? favoritesCount : undefined
+        },
         { label: t('applications'), href: "/account/applications", icon: FileText },
     ];
 
@@ -47,7 +56,12 @@ export const AccountSidebar = () => {
                                 }`}
                         >
                             <Icon className={`w-5 h-5 ${isActive ? 'text-blue-600' : 'text-gray-400'}`} />
-                            {item.label}
+                            <span className="flex-1">{item.label}</span>
+                            {item.badge && (
+                                <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full min-w-[20px] text-center">
+                                    {item.badge}
+                                </span>
+                            )}
                         </Link>
                     )
                 })}

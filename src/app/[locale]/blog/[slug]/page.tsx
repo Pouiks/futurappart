@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/db';
-import Header from '@/components/layout/Header';
-import Footer from '@/components/layout/Footer';
+import { Navbar } from '@/components/layout/Navbar';
+import { Footer } from '@/components/layout/Footer';
 import { notFound } from 'next/navigation';
 import { Calendar, User, ArrowLeft } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
@@ -34,7 +34,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
 
     return (
         <div className="min-h-screen bg-white font-sans text-slate-900">
-            <Header />
+            <Navbar />
 
             <main className="pt-24 pb-20">
 

@@ -1,5 +1,5 @@
 import { getDashboardStats } from './actions';
-import { Search, Mail, MousePointer, TrendingUp, Download } from 'lucide-react';
+import { Search, Mail, MousePointer, TrendingUp, Download, Eye } from 'lucide-react';
 
 export const dynamic = 'force-dynamic'; // Ensure no caching for realtime stats
 
@@ -29,13 +29,20 @@ export default async function AdminDashboard() {
             </div>
 
             {/* KPI Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
                 <KPICard
                     title="Recherches"
                     value={stats.totalSearches}
                     icon={Search}
                     trend="N/A"
                     color="blue"
+                />
+                <KPICard
+                    title="Vues Fiche"
+                    value={stats.totalViews}
+                    icon={Eye}
+                    trend="vs m-1"
+                    color="orange"
                 />
                 <KPICard
                     title="Intentions (Clics)"
@@ -118,6 +125,7 @@ function KPICard({ title, value, icon: Icon, trend, color }: any) {
         green: 'bg-green-50 text-green-600',
         purple: 'bg-purple-50 text-purple-600',
         slate: 'bg-slate-50 text-slate-600',
+        orange: 'bg-orange-50 text-orange-600',
     };
 
     return (

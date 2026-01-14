@@ -64,9 +64,14 @@ model CanonResidence {
   sourceId        String          @map("source_id")
   url             String
   trustScore      Int?            @default(50) @map("trust_score")
+  heroImageUrl    String?         @map("hero_image_url")
   
   // Strict Business Logic Fields
   status          ResidenceStatus @default(NON_PARTNER)
+  
+  brandId         String?         @map("brand_id")
+  brand           Brand?          @relation(fields: [brandId], references: [id])
+
   leadCapDaily    Int?            @map("lead_cap_daily")
   leadCapWeekly   Int?            @map("lead_cap_weekly")
   leadsSentToday  Int             @default(0) @map("leads_sent_today")
@@ -84,6 +89,20 @@ model CanonResidence {
 
   @@unique([sourceId, url])
   @@map("canon_residences")
+}
+
+model Brand {
+  id              String           @id @default(uuid())
+  name            String
+  slug            String           @unique
+  contactEmail    String           @map("contact_email")
+  
+  residences      CanonResidence[]
+  
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @default(now()) @updatedAt @map("updated_at")
+
+  @@map("brands")
 }
 
 model PartnerConfig {
@@ -107,6 +126,10 @@ model CanonUnit {
   price           Int
   surface         Decimal?         @db.Decimal(5, 2)
   availability    AvailabilityEnum
+  
+  description     String?         @db.Text
+  amenities       Json?           @map("amenities_json") // ["Wifi", "Gym"]
+  images          String[]        @default([])
   
   updatedAt       DateTime?       @default(now()) @updatedAt @map("updated_at")
   
@@ -159,9 +182,12 @@ model Profile {
 
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at")
+  lastSeenAt    DateTime? @map("last_seen_at")
 
   requests      SubscriptionRequest[]
   favorites     Favorite[]
+  
+  dossierPersons DossierPerson[]
 
   @@map("profiles")
 }
@@ -214,6 +240,12 @@ model SubscriptionRequest {
   payload       Json?    @map("payload_json") // Snapshot of specific request details if any
   
   createdAt     DateTime @default(now()) @map("created_at")
+  
+  // Snapshot of the dossier sent
+  documentSnapshotId String? @unique @map("document_snapshot_id")
+  documentSnapshot   LeadDocumentSnapshot? @relation(fields: [documentSnapshotId], references: [id])
+  
+
 
   @@map("subscription_requests")
 }
@@ -338,4 +370,106 @@ model BlogPost {
   @@index([status])
   @@index([publishedAt])
   @@map("blog_posts")
+}
+
+// 12. DOSSIER & DOCUMENTS
+
+enum PersonRole {
+  APPLICANT
+  GUARANTOR
+  LEGAL_REPRESENTATIVE
+}
+
+enum PersonStatus {
+  STUDENT
+  EMPLOYEE
+  SELF_EMPLOYED
+  ENTREPRENEUR
+  RETIRED
+  UNEMPLOYED
+  OTHER
+}
+
+enum NationalityGroup {
+  FR
+  EU
+  NON_EU
+}
+
+enum GuarantorType {
+  PERSON
+  ORGANISM
+}
+
+enum DocType {
+  IDENTITY
+  RESIDENCY_RIGHT
+  STUDENT_ENROLLMENT
+  PROFESSIONAL_STATUS_PROOF
+  INCOME_PROOF
+  TAX_NOTICE
+  ADDRESS_PROOF
+  GUARANTEE_CERTIFICATE
+}
+
+model DossierPerson {
+  id              String           @id @default(uuid())
+  profileId       String           @map("profile_id")
+  profile         Profile          @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  
+  role            PersonRole
+  
+  // Basic Info
+  firstName       String           @map("first_name")
+  lastName        String           @map("last_name")
+  email           String?
+  phone           String?
+  
+  // Logic Dimensions
+  status          PersonStatus     @default(OTHER)
+  nationality     NationalityGroup @default(FR)
+  birthDate       DateTime?        @db.Date @map("birth_date")
+  isMinor         Boolean          @default(false) @map("is_minor")
+  guarantorType   GuarantorType?   @map("guarantor_type") // Only for GUARANTOR
+  
+  // Documents
+  documents       UserDocument[]
+
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @default(now()) @updatedAt @map("updated_at")
+
+  @@map("dossier_persons")
+}
+
+model UserDocument {
+  id              String        @id @default(uuid())
+  personId        String        @map("person_id")
+  person          DossierPerson @relation(fields: [personId], references: [id], onDelete: Cascade)
+  
+  type            DocType
+  storagePath     String        @map("storage_path") // {userId}/{role}/{docType}/{uuid}
+  filename        String
+  mimeType        String        @map("mime_type")
+  size            Int
+  
+  // Validation status
+  status          String        @default("VALID") // PENDING, VALID, REJECTED
+  
+  createdAt       DateTime      @default(now()) @map("created_at")
+
+  @@map("user_documents")
+}
+
+model LeadDocumentSnapshot {
+  id            String   @id @default(uuid()) // Referenced by SubscriptionRequest
+  
+  // JSON containing the FROZEN list of transmitted documents
+  // Structure: { persons: [{ role, documents: [{ type, storagePath, filename }] }] }
+  content       Json
+  
+  createdAt     DateTime @default(now()) @map("created_at")
+  
+  request       SubscriptionRequest?
+
+  @@map("lead_document_snapshots")
 }

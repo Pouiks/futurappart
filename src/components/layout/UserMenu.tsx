@@ -3,7 +3,7 @@ import { useTranslations } from 'next-intl';
 import { Link, useRouter } from '@/i18n/navigation';
 import { useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
-import { User as UserIcon, LogIn, Heart, FileText, LogOut, LayoutDashboard, Settings } from 'lucide-react';
+import { User as UserIcon, LogIn, Heart, FileText, LogOut, LayoutDashboard, Settings, Folder } from 'lucide-react';
 import { usePathname as useNextPathname, useSearchParams } from 'next/navigation';
 
 interface UserMenuProps {
@@ -106,6 +106,11 @@ export const UserMenu = ({ counts, alerts }: UserMenuProps) => {
                                         {counts.favorites}
                                     </span>
                                 ) : null}
+                            </Link>
+
+                            <Link href="/account/dossier" className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 text-gray-900 font-bold transition-colors group/item">
+                                <Folder className="w-5 h-5 text-indigo-400 group-hover/item:text-indigo-500 transition-colors" />
+                                {tU('dossier')}
                             </Link>
 
                             <Link href="/account/applications" className="flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-gray-50 text-gray-900 font-bold transition-colors group/item">

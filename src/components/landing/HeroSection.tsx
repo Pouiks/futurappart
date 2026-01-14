@@ -2,7 +2,11 @@ import React from 'react';
 import { useTranslations } from 'next-intl';
 import { SearchOverlay } from './SearchOverlay';
 
-export const HeroSection = () => {
+interface HeroSectionProps {
+    cities: { title: string; slug: string }[];
+}
+
+export const HeroSection = ({ cities }: HeroSectionProps) => {
     const t = useTranslations('Hero');
 
     return (
@@ -40,7 +44,7 @@ export const HeroSection = () => {
 
                 {/* Right: Search Overlay */}
                 <div className="w-full">
-                    <SearchOverlay />
+                    <SearchOverlay cities={cities} />
                     {/* Trust Indicators (Mobile) */}
                     <div className="mt-8 flex lg:hidden flex-wrap justify-center gap-4 text-sm font-medium text-blue-200 opacity-90">
                         <span className="flex items-center gap-2">✓ 100% Gratuit</span>

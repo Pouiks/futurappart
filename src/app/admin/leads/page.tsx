@@ -1,6 +1,7 @@
 import { getLeadsReport, getPartners } from './actions';
 import { Calendar, User, Building, Mail, Phone, ChevronRight, ChevronDown } from 'lucide-react';
 import LeadFilters from './LeadFilters';
+import RelaunchButton from './RelaunchButton';
 
 export default async function LeadsPage({ searchParams }: { searchParams?: Promise<{ start?: string, end?: string, partner?: string, search?: string }> }) {
 
@@ -61,10 +62,10 @@ export default async function LeadsPage({ searchParams }: { searchParams?: Promi
                                 <div className="bg-slate-50 p-4 flex items-center justify-between cursor-pointer hover:bg-slate-100 transition-colors">
                                     <div className="flex items-center gap-3">
                                         <div className="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-xs uppercase">
-                                            {partner.id.substring(0, 2)}
+                                            {partner.name.substring(0, 2)}
                                         </div>
                                         <div>
-                                            <div className="font-bold text-slate-900 capitalize">{partner.id}</div>
+                                            <div className="font-bold text-slate-900 capitalize">{partner.name}</div>
                                             <div className="text-xs text-slate-500">{partner.residences.length} résidences actives</div>
                                         </div>
                                     </div>
@@ -132,6 +133,9 @@ export default async function LeadsPage({ searchParams }: { searchParams?: Promi
                                                                         }`}>
                                                                         {lead.status}
                                                                     </span>
+                                                                </td>
+                                                                <td className="px-4 py-3 text-right">
+                                                                    <RelaunchButton leadId={lead.id} />
                                                                 </td>
                                                             </tr>
                                                         ))}
