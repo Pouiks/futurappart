@@ -68,7 +68,7 @@ export async function upsertPerson(data: UpsertPersonData) {
         }
 
         // Sanitize data: Remove nested relations like 'documents' and metadata
-        const { documents, id, createdAt, updatedAt, profileId, income, cafNumber, arrivalDate, birthDate, ...cleanData } = data as any;
+        const { documents, id, createdAt, updatedAt, profileId, income, cafNumber, arrivalDate, ...cleanData } = data as any;
 
         // Logic split: Update if existing ID + Ownership, else Create
         if (data.id && data.id.length > 20) {

@@ -28,8 +28,19 @@ export const SubscriptionCTA = ({ unit, user, locale, isProfileComplete = false,
     const handleSubscribe = async () => {
         if (isSent) return;
 
-        // If Demo and Complete, we shouldn't be here (button disabled), but safety check
-        if (isDemo && isProfileComplete) return;
+        // Demo Mode Interception: Simulate Success
+        if (isDemo) {
+            setLoading(true);
+            toast.info("Mode Démo : Envoi simulé...");
+
+            // Fake delay for realism
+            setTimeout(() => {
+                setLoading(false);
+                setSuccess(true);
+                toast.success("Dossier envoyé (Simulation) !");
+            }, 1500);
+            return;
+        }
 
         setLoading(true);
 
@@ -46,9 +57,8 @@ export const SubscriptionCTA = ({ unit, user, locale, isProfileComplete = false,
                 console.error("Auto-favorite failed", err);
             }
 
-            // Redirect to Dossier Main Page as requested
-            router.push(`/${locale}/account/dossier`);
-            setLoading(false);
+            router.push(`/${locale}/account/edit`);
+            setLoading(false); // Stop loading if redirecting
             return;
         }
 
@@ -163,11 +173,11 @@ export const SubscriptionCTA = ({ unit, user, locale, isProfileComplete = false,
 
                 <button
                     onClick={handleSubscribe}
-                    disabled={loading || isSent || (isDemo && isProfileComplete)}
+                    disabled={loading || isSent}
                     className={`w-full font-bold py-4 rounded-xl shadow-lg transform transition-all text-lg flex items-center justify-center gap-2 ${isSent
                         ? "bg-green-500 text-white cursor-default shadow-none"
                         : (isDemo && isProfileComplete
-                            ? "bg-gray-400 text-white cursor-not-allowed shadow-none hover:bg-gray-400" // Disabled Gray
+                            ? "bg-orange-500 hover:bg-orange-600 text-white active:scale-95" // Re-enable interaction style (Orange like 'finaliser')
                             : (user && !isProfileComplete
                                 ? "bg-orange-500 hover:bg-orange-600 text-white active:scale-95"
                                 : "bg-blue-600 hover:bg-blue-700 text-white active:scale-95"))
@@ -182,7 +192,7 @@ export const SubscriptionCTA = ({ unit, user, locale, isProfileComplete = false,
                         ) : (
                             user && !isProfileComplete ? (
                                 <>
-                                    <span>Finaliser mon dossier</span>
+                                    <span>Finaliser mon profil</span>
                                     <span className="text-sm bg-white/20 px-2 py-0.5 rounded ml-1">1 min</span>
                                 </>
                             ) :

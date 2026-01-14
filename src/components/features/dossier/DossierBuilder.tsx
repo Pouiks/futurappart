@@ -39,8 +39,7 @@ export default function DossierBuilder({ userId, initialProfile, user }: Dossier
                     ...p,
                     income: p.income ?? initialProfile?.income,
                     cafNumber: p.cafNumber ?? initialProfile?.cafNumber,
-                    arrivalDate: p.arrivalDate ?? initialProfile?.arrivalDate,
-                    birthDate: p.birthDate ?? initialProfile?.birthdate // Sync from Profile if missing
+                    arrivalDate: p.arrivalDate ?? initialProfile?.arrivalDate
                 };
             }
             return p;
@@ -66,639 +65,633 @@ export default function DossierBuilder({ userId, initialProfile, user }: Dossier
                         ...p,
                         income: p.income ?? initialProfile.income,
                         cafNumber: p.cafNumber ?? initialProfile.cafNumber,
-                        arrivalDate: p.arrivalDate ?? initialProfile.arrivalDate,
-                        birthDate: p.birthDate ?? initialProfile.birthdate // Sync from Profile if missing
+                        arrivalDate: p.arrivalDate ?? initialProfile.arrivalDate
                     };
                 }
                 return p;
             });
 
+            // Only update if actually different to avoid cycles? 
+            // JSON stringify comparison is expensive but safe.
+            // For now, trust standard behavior, but if loop persists, add deep check.
             setPersons(merged);
         }
-
-        // Only update if actually different to avoid cycles? 
-        // JSON stringify comparison is expensive but safe.
-        // For now, trust standard behavior, but if loop persists, add deep check.
-        setPersons(merged);
-    }
     }, [initialProfile]);
 
-// Sync Applicant Contact Info with Profile (Auto-fill Name/Email/Phone from Auth if missing)
-useEffect(() => {
-    if (!initialProfile) return;
+    // Sync Applicant Contact Info with Profile (Auto-fill Name/Email/Phone from Auth if missing)
+    useEffect(() => {
+        if (!initialProfile) return;
 
+        const applicant = persons.find(p => p.role === 'APPLICANT');
+        if (applicant) {
+            let updates: Partial<DossierPerson> = {};
+            let hasChanges = false;
+
+            if (!applicant.email && initialProfile.email) {
+                updates.email = initialProfile.email;
+                hasChanges = true;
+            }
+            if (!applicant.phone && initialProfile.phone) {
+                updates.phone = initialProfile.phone;
+                hasChanges = true;
+            }
+
+            // Sync Name and clear "Nouveau/Candidat" defaults
+            const meta = user?.user_metadata || {};
+            const targetFirstName = initialProfile.firstName || meta.first_name || (meta.full_name ? meta.full_name.split(' ')[0] : '') || '';
+            const targetLastName = initialProfile.lastName || meta.last_name || (meta.full_name ? meta.full_name.split(' ').slice(1).join(' ') : '') || '';
+
+            if (targetFirstName && (!applicant.firstName || applicant.firstName === 'Nouveau')) {
+                updates.firstName = targetFirstName;
+                hasChanges = true;
+            }
+
+            if (targetLastName && (!applicant.lastName || applicant.lastName === 'Candidat')) {
+                updates.lastName = targetLastName;
+                hasChanges = true;
+            }
+
+            // Only trigger upsert if we actually inferred NEW info from Auth/Profile that wasn't in DossierPerson
+            if (hasChanges) {
+                // We update local state to reflect change immediately
+                const updatedApplicant = { ...applicant, ...updates };
+                setPersons(prev => prev.map(p => p.id === applicant.id ? updatedApplicant as PersonWithDocs : p));
+
+                // Fire and forget save
+                upsertPerson(updatedApplicant as any).catch(e => console.error("Auto-sync failed", e));
+                toast.success("Coordonnées pré-remplies.");
+            }
+        }
+    }, [initialProfile, user]); // Removed 'persons' dependency to avoid reacting to own updates, causing loop. 
+    // Wait, if I remove 'persons', I can't check 'applicant'.
+    // Correct pattern: DEPEND on 'persons' but ensure 'hasChanges' is false if already synced.
+    // My previous code had 'persons' in dependency.
+    // The issue was 'income' sync always triggered 'hasChanges = true' because of undefined check.
+    // Now that income is handled in init, this effect is safer.
+    // I will include 'persons.length' or strict equality check?
+    // Actually, 'persons' reference changes on every render if I setPersons.
+    // I should limit this effect.
+    // Let's rely on 'initialProfile' changes or 'user' changes mainly. 
+    // If I include 'persons', I risk loop if 'setPersons' creates new object reference.
+    // I will disable exhaustive-deps warning for this effect or use a ref to track if verified.
+
+    const activePerson = persons.find(p => p.id === activeTab);
+
+    // Compute Requirements dynamically
+    const requirements: RequirementResult | null = activePerson ? engine.getRequirements({
+        role: activePerson.role,
+        status: activePerson.status,
+        nationality: activePerson.nationality,
+        isMinor: activePerson.isMinor,
+        guarantorType: activePerson.guarantorType || (activePerson.role === 'GUARANTOR' ? GuarantorType.PERSON : null)
+    }) : null;
+
+    // Check for Stale Documents
+    const isUserActive = initialProfile?.lastSeenAt && (new Date().getTime() - new Date(initialProfile.lastSeenAt).getTime()) < (30 * 24 * 60 * 60 * 1000);
+    const hasStaleDocuments = isUserActive && persons.some(p =>
+        p.documents?.some((d: UserDocument) =>
+            (new Date().getTime() - new Date(d.createdAt).getTime()) > (21 * 24 * 60 * 60 * 1000)
+        )
+    );
+
+    // Handlers
+    const handleCreatePerson = async (role: PersonRole) => {
+        if (isCreating) return;
+        setIsCreating(true);
+        let firstName = '';
+        let lastName = '';
+        if (role === 'APPLICANT') {
+            const meta = user?.user_metadata || {};
+            firstName = initialProfile?.firstName || meta.first_name || (meta.full_name ? meta.full_name.split(' ')[0] : '') || '';
+            lastName = initialProfile?.lastName || meta.last_name || (meta.full_name ? meta.full_name.split(' ').slice(1).join(' ') : '') || '';
+        }
+
+        try {
+            const newPerson = {
+                role,
+                firstName,
+                lastName,
+                status: role === 'GUARANTOR' ? PersonStatus.EMPLOYEE : PersonStatus.STUDENT,
+                nationality: NationalityGroup.FR,
+                isMinor: false,
+                guarantorType: role === 'GUARANTOR' ? GuarantorType.PERSON : null,
+            };
+            await upsertPerson(newPerson as any);
+            toast.success(role === 'APPLICANT' ? "Mon dossier créé !" : "Garant ajouté !");
+            window.location.reload();
+        } catch (e) {
+            console.error(e);
+            toast.error("Erreur lors de la création.");
+            setIsCreating(false);
+        }
+    };
+
+    const handleDeleteGuarantor = async () => {
+        if (!activePerson || activePerson.role === 'APPLICANT') return;
+        if (!confirm('Voulez-vous vraiment supprimer ce garant ?')) return;
+
+        try {
+            await deletePerson(activePerson.id);
+            toast.success("Garant supprimé.");
+            window.location.reload();
+        } catch (e) {
+            console.error(e);
+            toast.error("Erreur lors de la suppression.");
+        }
+    };
+
+    // State for manual save
+    const [unsavedChanges, setUnsavedChanges] = useState(false);
+
+    const handleUpdatePerson = (field: keyof DossierPerson | 'income', value: any) => {
+        if (!activePerson) return;
+        const updatedPerson = { ...activePerson, [field]: value };
+        setPersons(persons.map(p => p.id === activePerson.id ? updatedPerson : p));
+        setUnsavedChanges(true);
+    };
+
+    const handleSave = async () => {
+        if (!activePerson) return;
+        try {
+            await upsertPerson(activePerson as any);
+            toast.success("Modifications enregistrées");
+            setUnsavedChanges(false);
+        } catch (error) {
+            console.error("Failed to save", error);
+            toast.error("Erreur de sauvegarde");
+        }
+    };
+
+    // Mappings
+    const statusLabels: Record<string, string> = {
+        STUDENT: "Étudiant",
+        EMPLOYEE: "Salarié",
+        SELF_EMPLOYED: "Indépendant / Freelance",
+        ENTREPRENEUR: "Chef d'entreprise",
+        RETIRED: "Retraité",
+        UNEMPLOYED: "Sans emploi",
+        OTHER: "Autre situation"
+    };
+
+    const nationalityLabels: Record<string, string> = {
+        FR: "Française 🇫🇷",
+        EU: "Union Européenne 🇪🇺",
+        NON_EU: "Hors Union Européenne 🌍"
+    };
+
+
+
+    // Calculate Global Progress & Business Rules
     const applicant = persons.find(p => p.role === 'APPLICANT');
-    if (applicant) {
-        let updates: Partial<DossierPerson> = {};
-        let hasChanges = false;
+    const isStudent = applicant?.status === 'STUDENT' || applicant?.status === 'UNEMPLOYED';
+    const hasGuarantor = persons.some(p => p.role === 'GUARANTOR');
+    const hasIncome = (applicant?.income !== undefined && applicant?.income !== null); // Check if field is filled (even if 0, usually) but Page.tsx checked > 0. Let's assume > 0 or just presence. Page used > 0.
 
-        if (!applicant.email && initialProfile.email) {
-            updates.email = initialProfile.email;
-            hasChanges = true;
+    // Business Rules
+    const needsGuarantor = isStudent || !applicant; // Default to needing if no applicant yet or is student
+
+    const allReqs = persons.map(p => engine.getRequirements({
+        role: p.role,
+        status: p.status,
+        nationality: p.nationality,
+        isMinor: p.isMinor,
+        guarantorType: p.guarantorType || (p.role === 'GUARANTOR' ? GuarantorType.PERSON : null)
+    }));
+
+    let totalRequired = 0;
+    let totalCompleted = 0;
+
+    // 0. Identity & Contact Checks
+    persons.forEach(p => {
+        if (p.role === 'APPLICANT') {
+            totalRequired += 5; // FirstName, LastName, Email, Phone, BirthDate
+            if (p.firstName && p.firstName.trim() !== '' && p.firstName !== 'Nouveau') totalCompleted++;
+            if (p.lastName && p.lastName.trim() !== '' && p.lastName !== 'Candidat') totalCompleted++;
+            if (p.email && p.email.trim() !== '') totalCompleted++;
+            if (p.phone && p.phone.trim() !== '') totalCompleted++;
+            if (p.birthDate) totalCompleted++;
+        } else if (p.role === 'GUARANTOR') {
+            totalRequired += 2; // FirstName, LastName
+            if (p.firstName && p.firstName.trim() !== '' && p.firstName !== 'Nouveau Garant') totalCompleted++;
+            if (p.lastName && p.lastName.trim() !== '') totalCompleted++;
         }
-        if (!applicant.phone && initialProfile.phone) {
-            updates.phone = initialProfile.phone;
-            hasChanges = true;
-        }
-
-        // Sync Name and clear "Nouveau/Candidat" defaults
-        const meta = user?.user_metadata || {};
-        const targetFirstName = initialProfile.firstName || meta.first_name || (meta.full_name ? meta.full_name.split(' ')[0] : '') || '';
-        const targetLastName = initialProfile.lastName || meta.last_name || (meta.full_name ? meta.full_name.split(' ').slice(1).join(' ') : '') || '';
-
-        if (targetFirstName && (!applicant.firstName || applicant.firstName === 'Nouveau')) {
-            updates.firstName = targetFirstName;
-            hasChanges = true;
-        }
-
-        if (targetLastName && (!applicant.lastName || applicant.lastName === 'Candidat')) {
-            updates.lastName = targetLastName;
-            hasChanges = true;
-        }
-
-        // Only trigger upsert if we actually inferred NEW info from Auth/Profile that wasn't in DossierPerson
-        if (hasChanges) {
-            // We update local state to reflect change immediately
-            const updatedApplicant = { ...applicant, ...updates };
-            setPersons(prev => prev.map(p => p.id === applicant.id ? updatedApplicant as PersonWithDocs : p));
-
-            // Fire and forget save
-            upsertPerson(updatedApplicant as any).catch(e => console.error("Auto-sync failed", e));
-            toast.success("Coordonnées pré-remplies.");
-        }
-    }
-}, [initialProfile, user]); // Removed 'persons' dependency to avoid reacting to own updates, causing loop. 
-// Wait, if I remove 'persons', I can't check 'applicant'.
-// Correct pattern: DEPEND on 'persons' but ensure 'hasChanges' is false if already synced.
-// My previous code had 'persons' in dependency.
-// The issue was 'income' sync always triggered 'hasChanges = true' because of undefined check.
-// Now that income is handled in init, this effect is safer.
-// I will include 'persons.length' or strict equality check?
-// Actually, 'persons' reference changes on every render if I setPersons.
-// I should limit this effect.
-// Let's rely on 'initialProfile' changes or 'user' changes mainly. 
-// If I include 'persons', I risk loop if 'setPersons' creates new object reference.
-// I will disable exhaustive-deps warning for this effect or use a ref to track if verified.
-
-const activePerson = persons.find(p => p.id === activeTab);
-
-// Compute Requirements dynamically
-const requirements: RequirementResult | null = activePerson ? engine.getRequirements({
-    role: activePerson.role,
-    status: activePerson.status,
-    nationality: activePerson.nationality,
-    isMinor: activePerson.isMinor,
-    guarantorType: activePerson.guarantorType || (activePerson.role === 'GUARANTOR' ? GuarantorType.PERSON : null)
-}) : null;
-
-// Check for Stale Documents
-const isUserActive = initialProfile?.lastSeenAt && (new Date().getTime() - new Date(initialProfile.lastSeenAt).getTime()) < (30 * 24 * 60 * 60 * 1000);
-const hasStaleDocuments = isUserActive && persons.some(p =>
-    p.documents?.some((d: UserDocument) =>
-        (new Date().getTime() - new Date(d.createdAt).getTime()) > (21 * 24 * 60 * 60 * 1000)
-    )
-);
-
-// Handlers
-const handleCreatePerson = async (role: PersonRole) => {
-    if (isCreating) return;
-    setIsCreating(true);
-    let firstName = '';
-    let lastName = '';
-    if (role === 'APPLICANT') {
-        const meta = user?.user_metadata || {};
-        firstName = initialProfile?.firstName || meta.first_name || (meta.full_name ? meta.full_name.split(' ')[0] : '') || '';
-        lastName = initialProfile?.lastName || meta.last_name || (meta.full_name ? meta.full_name.split(' ').slice(1).join(' ') : '') || '';
-    }
-
-    try {
-        const newPerson = {
-            role,
-            firstName,
-            lastName,
-            status: role === 'GUARANTOR' ? PersonStatus.EMPLOYEE : PersonStatus.STUDENT,
-            nationality: NationalityGroup.FR,
-            isMinor: false,
-            guarantorType: role === 'GUARANTOR' ? GuarantorType.PERSON : null,
-        };
-        await upsertPerson(newPerson as any);
-        toast.success(role === 'APPLICANT' ? "Mon dossier créé !" : "Garant ajouté !");
-        window.location.reload();
-    } catch (e) {
-        console.error(e);
-        toast.error("Erreur lors de la création.");
-        setIsCreating(false);
-    }
-};
-
-const handleDeleteGuarantor = async () => {
-    if (!activePerson || activePerson.role === 'APPLICANT') return;
-    if (!confirm('Voulez-vous vraiment supprimer ce garant ?')) return;
-
-    try {
-        await deletePerson(activePerson.id);
-        toast.success("Garant supprimé.");
-        window.location.reload();
-    } catch (e) {
-        console.error(e);
-        toast.error("Erreur lors de la suppression.");
-    }
-};
-
-// State for manual save
-const [unsavedChanges, setUnsavedChanges] = useState(false);
-
-const handleUpdatePerson = (field: keyof DossierPerson | 'income', value: any) => {
-    if (!activePerson) return;
-    const updatedPerson = { ...activePerson, [field]: value };
-    setPersons(persons.map(p => p.id === activePerson.id ? updatedPerson : p));
-    setUnsavedChanges(true);
-};
-
-const handleSave = async () => {
-    if (!activePerson) return;
-    try {
-        const result = await upsertPerson(activePerson as any);
-        if (result.error) throw new Error(result.error);
-
-        toast.success("Modifications enregistrées");
-        setUnsavedChanges(false);
-    } catch (error) {
-        console.error("Failed to save", error);
-        toast.error("Erreur de sauvegarde");
-    }
-};
-
-// Mappings
-const statusLabels: Record<string, string> = {
-    STUDENT: "Étudiant",
-    EMPLOYEE: "Salarié",
-    SELF_EMPLOYED: "Indépendant / Freelance",
-    ENTREPRENEUR: "Chef d'entreprise",
-    RETIRED: "Retraité",
-    UNEMPLOYED: "Sans emploi",
-    OTHER: "Autre situation"
-};
-
-const nationalityLabels: Record<string, string> = {
-    FR: "Française 🇫🇷",
-    EU: "Union Européenne 🇪🇺",
-    NON_EU: "Hors Union Européenne 🌍"
-};
-
-
-
-// Calculate Global Progress & Business Rules
-const applicant = persons.find(p => p.role === 'APPLICANT');
-const isStudent = applicant?.status === 'STUDENT' || applicant?.status === 'UNEMPLOYED';
-const hasGuarantor = persons.some(p => p.role === 'GUARANTOR');
-const hasIncome = (applicant?.income !== undefined && applicant?.income !== null); // Check if field is filled (even if 0, usually) but Page.tsx checked > 0. Let's assume > 0 or just presence. Page used > 0.
-
-// Business Rules
-const needsGuarantor = isStudent || !applicant; // Default to needing if no applicant yet or is student
-
-const allReqs = persons.map(p => engine.getRequirements({
-    role: p.role,
-    status: p.status,
-    nationality: p.nationality,
-    isMinor: p.isMinor,
-    guarantorType: p.guarantorType || (p.role === 'GUARANTOR' ? GuarantorType.PERSON : null)
-}));
-
-let totalRequired = 0;
-let totalCompleted = 0;
-
-// 0. Identity & Contact Checks
-persons.forEach(p => {
-    if (p.role === 'APPLICANT') {
-        totalRequired += 5; // FirstName, LastName, Email, Phone, BirthDate
-        if (p.firstName && p.firstName.trim() !== '' && p.firstName !== 'Nouveau') totalCompleted++;
-        if (p.lastName && p.lastName.trim() !== '' && p.lastName !== 'Candidat') totalCompleted++;
-        if (p.email && p.email.trim() !== '') totalCompleted++;
-        if (p.phone && p.phone.trim() !== '') totalCompleted++;
-        if (p.birthDate) totalCompleted++;
-    } else if (p.role === 'GUARANTOR') {
-        totalRequired += 2; // FirstName, LastName
-        if (p.firstName && p.firstName.trim() !== '' && p.firstName !== 'Nouveau Garant') totalCompleted++;
-        if (p.lastName && p.lastName.trim() !== '') totalCompleted++;
-    }
-});
-
-// 1. Documents
-allReqs.forEach((req, idx) => {
-    req.required.forEach(dt => {
-        totalRequired++;
-        if (persons[idx].documents?.some(d => d.type === dt && d.status === 'VALID')) totalCompleted++;
     });
-    req.orGroups.forEach(group => {
-        totalRequired++;
-        if (group.some(dt => persons[idx].documents?.some(d => d.type === dt && d.status === 'VALID'))) totalCompleted++;
-    });
-});
 
-// 2. Business Logic Steps (Weighted as 1 "Document" equivalent each)
-if (needsGuarantor) {
+    // 1. Documents
+    allReqs.forEach((req, idx) => {
+        req.required.forEach(dt => {
+            totalRequired++;
+            if (persons[idx].documents?.some(d => d.type === dt && d.status === 'VALID')) totalCompleted++;
+        });
+        req.orGroups.forEach(group => {
+            totalRequired++;
+            if (group.some(dt => persons[idx].documents?.some(d => d.type === dt && d.status === 'VALID'))) totalCompleted++;
+        });
+    });
+
+    // 2. Business Logic Steps (Weighted as 1 "Document" equivalent each)
+    if (needsGuarantor) {
+        totalRequired++;
+        if (hasGuarantor) totalCompleted++;
+    }
+
+    // Income check (Always required)
     totalRequired++;
-    if (hasGuarantor) totalCompleted++;
-}
-
-// Income check (Always required)
-totalRequired++;
-if (applicant?.income && applicant.income > 0) totalCompleted++;
+    if (applicant?.income && applicant.income > 0) totalCompleted++;
 
 
-const progress = totalRequired === 0 ? 0 : (totalCompleted / totalRequired) * 100;
+    const progress = totalRequired === 0 ? 0 : (totalCompleted / totalRequired) * 100;
 
-return (
-    <div className="w-full">
-        <InactivityNudge />
+    return (
+        <div className="w-full">
+            <InactivityNudge />
 
-        <div className="flex justify-between items-center mb-6">
-            <div>
-                <h1 className="text-3xl font-extrabold text-gray-900 mb-2">Mon Dossier Locatif</h1>
-                <p className="text-gray-500">
-                    Complétez votre dossier une seule fois pour toutes vos candidatures.
-                </p>
-            </div>
-        </div>
-
-        <DossierProgressBar progress={progress} totalDocs={totalRequired} completedDocs={totalCompleted} />
-
-        {/* BLOCKING ALERTS */}
-        {applicant && needsGuarantor && !hasGuarantor && (
-            <div className="mb-6 p-4 bg-orange-50 border border-orange-200 rounded-xl flex items-center gap-4 animate-in fade-in slide-in-from-top-2">
-                <div className="p-2 bg-orange-100 rounded-lg text-orange-600">
-                    <Shield className="w-5 h-5" />
-                </div>
+            <div className="flex justify-between items-center mb-6">
                 <div>
-                    <h4 className="font-bold text-orange-900">Garant Manquant</h4>
-                    <p className="text-sm text-orange-700 mt-1">
-                        En tant qu'étudiant, vous devez ajouter au moins un garant (physique ou moral) pour finaliser votre dossier.
-                    </p>
-                </div>
-                <button
-                    onClick={() => handleCreatePerson('GUARANTOR')}
-                    className="ml-auto bg-orange-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-orange-700 transition"
-                >
-                    Ajouter
-                </button>
-            </div>
-        )}
-
-        {applicant && (!applicant.income || applicant.income <= 0) && (
-            <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-xl flex items-center gap-4 animate-in fade-in slide-in-from-top-2">
-                <div className="p-2 bg-blue-100 rounded-lg text-blue-600">
-                    <Briefcase className="w-5 h-5" />
-                </div>
-                <div>
-                    <h4 className="font-bold text-blue-900">Revenus manquants</h4>
-                    <p className="text-sm text-blue-700 mt-1">
-                        Veuillez indiquer vos revenus mensuels (ou 0€) sur votre profil candidat.
-                    </p>
-                </div>
-                <button
-                    onClick={() => setActiveTab(applicant.id)}
-                    className="ml-auto text-blue-600 font-bold text-sm hover:underline"
-                >
-                    Modifier
-                </button>
-            </div>
-        )}
-
-        {hasStaleDocuments && (
-            <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-4">
-                <div className="p-2 bg-amber-100 rounded-lg text-amber-600">
-                    <AlertTriangle className="w-5 h-5" />
-                </div>
-                <div>
-                    <h4 className="font-bold text-amber-900">Vérification recommandée</h4>
-                    <p className="text-sm text-amber-700 mt-1">
-                        Certains documents semblent anciens (&gt; 3 semaines). Une mise à jour est conseillée.
+                    <h1 className="text-3xl font-extrabold text-gray-900 mb-2">Mon Dossier Locatif</h1>
+                    <p className="text-gray-500">
+                        Complétez votre dossier une seule fois pour toutes vos candidatures.
                     </p>
                 </div>
             </div>
-        )}
 
-        {/* MAIN LAYOUT With Sidebar for Protagonists */}
-        <div className="flex flex-col lg:flex-row gap-8">
+            <DossierProgressBar progress={progress} totalDocs={totalRequired} completedDocs={totalCompleted} />
 
-            {/* LEFT SIDEBAR navigation */}
-            <div className="w-full lg:w-64 flex flex-col gap-4 shrink-0">
-                <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-2 flex flex-col gap-2 sticky top-24">
-                    <label className="text-xs font-bold text-gray-600 uppercase tracking-wider px-3 mt-2 mb-1">Candidat</label>
-                    {persons.filter(p => p.role === 'APPLICANT').map(p => (
-                        <button
-                            key={p.id}
-                            onClick={() => setActiveTab(p.id)}
-                            className={`
-                                    flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-bold transition-all
-                                    ${activeTab === p.id
-                                    ? 'bg-blue-600 text-white shadow-md'
-                                    : 'bg-white text-gray-600 hover:bg-gray-50 border border-transparent hover:border-gray-200'}
-                                `}
-                        >
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${activeTab === p.id ? 'bg-white/20' : 'bg-gray-100 text-gray-500'}`}>
-                                <User className="w-4 h-4" />
-                            </div>
-                            <div className="text-left">
-                                <div className="leading-tight">Moi</div>
-                                <div className={`text-xs font-normal ${activeTab === p.id ? 'text-blue-100' : 'text-gray-500'}`}>Profil Principal</div>
-                            </div>
-                        </button>
-                    ))}
-
-                    {(!persons.find(p => p.role === 'APPLICANT')) && (
-                        <button onClick={() => handleCreatePerson('APPLICANT')} disabled={isCreating} className="flex items-center gap-2 px-3 py-3 rounded-lg border border-dashed border-blue-300 bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors text-xs font-bold justify-center">
-                            <Plus className="w-4 h-4" /> Créer mon profil
-                        </button>
-                    )}
-
-                    <div className="w-full h-px bg-gray-100 my-1"></div>
-
-                    <label className="text-xs font-bold text-gray-600 uppercase tracking-wider px-3 mb-1">Garants</label>
-
-                    {persons.filter(p => p.role === 'GUARANTOR').map(p => (
-                        <button
-                            key={p.id}
-                            onClick={() => setActiveTab(p.id)}
-                            className={`
-                                    flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-bold transition-all
-                                    ${activeTab === p.id
-                                    ? 'bg-indigo-600 text-white shadow-md'
-                                    : 'bg-white text-gray-600 hover:bg-gray-50 border border-transparent hover:border-gray-200'}
-                                `}
-                        >
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${activeTab === p.id ? 'bg-white/20' : 'bg-gray-100 text-gray-500'}`}>
-                                <Shield className="w-4 h-4" />
-                            </div>
-                            <div className="text-left">
-                                <div className="leading-tight truncate max-w-[120px]">{p.firstName || 'Nouveau Garant'}</div>
-                                <div className={`text-xs font-normal ${activeTab === p.id ? 'text-indigo-100' : 'text-gray-500'}`}>Garant</div>
-                            </div>
-                        </button>
-                    ))}
-
+            {/* BLOCKING ALERTS */}
+            {applicant && needsGuarantor && !hasGuarantor && (
+                <div className="mb-6 p-4 bg-orange-50 border border-orange-200 rounded-xl flex items-center gap-4 animate-in fade-in slide-in-from-top-2">
+                    <div className="p-2 bg-orange-100 rounded-lg text-orange-600">
+                        <Shield className="w-5 h-5" />
+                    </div>
+                    <div>
+                        <h4 className="font-bold text-orange-900">Garant Manquant</h4>
+                        <p className="text-sm text-orange-700 mt-1">
+                            En tant qu'étudiant, vous devez ajouter au moins un garant (physique ou moral) pour finaliser votre dossier.
+                        </p>
+                    </div>
                     <button
                         onClick={() => handleCreatePerson('GUARANTOR')}
-                        disabled={isCreating}
-                        className="flex items-center gap-2 px-3 py-3 rounded-lg border border-transparent bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-all text-sm font-bold justify-start group shadow-sm"
+                        className="ml-auto bg-orange-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-orange-700 transition"
                     >
-                        <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-indigo-600 shadow-sm">
-                            <Plus className="w-4 h-4" />
-                        </div>
-                        Ajouter un garant
+                        Ajouter
                     </button>
                 </div>
-            </div>
+            )}
 
-            {/* CURRENT PERSON FORM AREA */}
-            <div className="flex-1 min-w-0">
-                {activePerson ? (
-                    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex flex-col">
+            {applicant && (!applicant.income || applicant.income <= 0) && (
+                <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-xl flex items-center gap-4 animate-in fade-in slide-in-from-top-2">
+                    <div className="p-2 bg-blue-100 rounded-lg text-blue-600">
+                        <Briefcase className="w-5 h-5" />
+                    </div>
+                    <div>
+                        <h4 className="font-bold text-blue-900">Revenus manquants</h4>
+                        <p className="text-sm text-blue-700 mt-1">
+                            Veuillez indiquer vos revenus mensuels (ou 0€) sur votre profil candidat.
+                        </p>
+                    </div>
+                    <button
+                        onClick={() => setActiveTab(applicant.id)}
+                        className="ml-auto text-blue-600 font-bold text-sm hover:underline"
+                    >
+                        Modifier
+                    </button>
+                </div>
+            )}
 
-                        {/* Header Personnalisation */}
-                        <div className="p-6 border-b border-gray-100 bg-gray-50/50 flex flex-col sm:flex-row gap-6 items-start sm:items-center">
-                            <div className={`w-20 h-20 rounded-full flex items-center justify-center text-white shadow-lg ${activePerson.role === 'APPLICANT' ? 'bg-gradient-to-br from-blue-400 to-blue-600' : 'bg-gradient-to-br from-indigo-400 to-indigo-600'}`}>
-                                {activePerson.role === 'APPLICANT' ? <User className="w-10 h-10" /> : <Shield className="w-10 h-10" />}
+            {hasStaleDocuments && (
+                <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-4">
+                    <div className="p-2 bg-amber-100 rounded-lg text-amber-600">
+                        <AlertTriangle className="w-5 h-5" />
+                    </div>
+                    <div>
+                        <h4 className="font-bold text-amber-900">Vérification recommandée</h4>
+                        <p className="text-sm text-amber-700 mt-1">
+                            Certains documents semblent anciens (&gt; 3 semaines). Une mise à jour est conseillée.
+                        </p>
+                    </div>
+                </div>
+            )}
+
+            {/* MAIN LAYOUT With Sidebar for Protagonists */}
+            <div className="flex flex-col lg:flex-row gap-8">
+
+                {/* LEFT SIDEBAR navigation */}
+                <div className="w-full lg:w-64 flex flex-col gap-4 shrink-0">
+                    <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-2 flex flex-col gap-2 sticky top-24">
+                        <label className="text-xs font-bold text-gray-600 uppercase tracking-wider px-3 mt-2 mb-1">Candidat</label>
+                        {persons.filter(p => p.role === 'APPLICANT').map(p => (
+                            <button
+                                key={p.id}
+                                onClick={() => setActiveTab(p.id)}
+                                className={`
+                                    flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-bold transition-all
+                                    ${activeTab === p.id
+                                        ? 'bg-blue-600 text-white shadow-md'
+                                        : 'bg-white text-gray-600 hover:bg-gray-50 border border-transparent hover:border-gray-200'}
+                                `}
+                            >
+                                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${activeTab === p.id ? 'bg-white/20' : 'bg-gray-100 text-gray-500'}`}>
+                                    <User className="w-4 h-4" />
+                                </div>
+                                <div className="text-left">
+                                    <div className="leading-tight">Moi</div>
+                                    <div className={`text-xs font-normal ${activeTab === p.id ? 'text-blue-100' : 'text-gray-500'}`}>Profil Principal</div>
+                                </div>
+                            </button>
+                        ))}
+
+                        {(!persons.find(p => p.role === 'APPLICANT')) && (
+                            <button onClick={() => handleCreatePerson('APPLICANT')} disabled={isCreating} className="flex items-center gap-2 px-3 py-3 rounded-lg border border-dashed border-blue-300 bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors text-xs font-bold justify-center">
+                                <Plus className="w-4 h-4" /> Créer mon profil
+                            </button>
+                        )}
+
+                        <div className="w-full h-px bg-gray-100 my-1"></div>
+
+                        <label className="text-xs font-bold text-gray-600 uppercase tracking-wider px-3 mb-1">Garants</label>
+
+                        {persons.filter(p => p.role === 'GUARANTOR').map(p => (
+                            <button
+                                key={p.id}
+                                onClick={() => setActiveTab(p.id)}
+                                className={`
+                                    flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-bold transition-all
+                                    ${activeTab === p.id
+                                        ? 'bg-indigo-600 text-white shadow-md'
+                                        : 'bg-white text-gray-600 hover:bg-gray-50 border border-transparent hover:border-gray-200'}
+                                `}
+                            >
+                                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${activeTab === p.id ? 'bg-white/20' : 'bg-gray-100 text-gray-500'}`}>
+                                    <Shield className="w-4 h-4" />
+                                </div>
+                                <div className="text-left">
+                                    <div className="leading-tight truncate max-w-[120px]">{p.firstName || 'Nouveau Garant'}</div>
+                                    <div className={`text-xs font-normal ${activeTab === p.id ? 'text-indigo-100' : 'text-gray-500'}`}>Garant</div>
+                                </div>
+                            </button>
+                        ))}
+
+                        <button
+                            onClick={() => handleCreatePerson('GUARANTOR')}
+                            disabled={isCreating}
+                            className="flex items-center gap-2 px-3 py-3 rounded-lg border border-transparent bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-all text-sm font-bold justify-start group shadow-sm"
+                        >
+                            <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-indigo-600 shadow-sm">
+                                <Plus className="w-4 h-4" />
                             </div>
+                            Ajouter un garant
+                        </button>
+                    </div>
+                </div>
 
-                            <div className="flex-1 w-full">
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-bold text-gray-600 uppercase block">Prénom</label>
-                                        <input
-                                            className="block w-full text-lg font-bold text-gray-900 bg-white border border-gray-200 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all placeholder-gray-400"
-                                            value={activePerson.firstName}
-                                            onChange={(e) => handleUpdatePerson('firstName', e.target.value)}
-                                            placeholder="Ex: Thomas"
-                                        />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-bold text-gray-600 uppercase block">Nom</label>
-                                        <input
-                                            className="block w-full text-lg font-bold text-gray-900 bg-white border border-gray-200 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all placeholder-gray-400"
-                                            value={activePerson.lastName}
-                                            onChange={(e) => handleUpdatePerson('lastName', e.target.value)}
-                                            placeholder="Ex: Durand"
-                                        />
-                                    </div>
+                {/* CURRENT PERSON FORM AREA */}
+                <div className="flex-1 min-w-0">
+                    {activePerson ? (
+                        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex flex-col">
+
+                            {/* Header Personnalisation */}
+                            <div className="p-6 border-b border-gray-100 bg-gray-50/50 flex flex-col sm:flex-row gap-6 items-start sm:items-center">
+                                <div className={`w-20 h-20 rounded-full flex items-center justify-center text-white shadow-lg ${activePerson.role === 'APPLICANT' ? 'bg-gradient-to-br from-blue-400 to-blue-600' : 'bg-gradient-to-br from-indigo-400 to-indigo-600'}`}>
+                                    {activePerson.role === 'APPLICANT' ? <User className="w-10 h-10" /> : <Shield className="w-10 h-10" />}
                                 </div>
 
-                                <div className="flex flex-wrap gap-4">
-                                    {/* STATUS SELECTOR */}
-                                    {/* ... keeping status selectors but visually cleaner */}
-                                    <div className="relative group flex-1">
-                                        <label className="text-xs font-bold text-gray-600 uppercase block mb-1">Mon Statut</label>
-                                        <select
-                                            className="w-full bg-white border border-gray-200 rounded-lg py-2 pl-3 pr-8 text-sm font-bold text-gray-700 cursor-pointer hover:border-blue-300 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all"
-                                            value={activePerson.status}
-                                            onChange={(e) => handleUpdatePerson('status', e.target.value)}
-                                        >
-                                            {Object.values(PersonStatus)
-                                                .filter(s => activePerson.role !== 'GUARANTOR' || s !== 'STUDENT')
-                                                .map(s => (
-                                                    <option key={s} value={s}>{statusLabels[s] || s}</option>
-                                                ))}
-                                        </select>
+                                <div className="flex-1 w-full">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                                        <div className="space-y-1">
+                                            <label className="text-xs font-bold text-gray-600 uppercase block">Prénom</label>
+                                            <input
+                                                className="block w-full text-lg font-bold text-gray-900 bg-white border border-gray-200 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all placeholder-gray-400"
+                                                value={activePerson.firstName}
+                                                onChange={(e) => handleUpdatePerson('firstName', e.target.value)}
+                                                placeholder="Ex: Thomas"
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-xs font-bold text-gray-600 uppercase block">Nom</label>
+                                            <input
+                                                className="block w-full text-lg font-bold text-gray-900 bg-white border border-gray-200 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all placeholder-gray-400"
+                                                value={activePerson.lastName}
+                                                onChange={(e) => handleUpdatePerson('lastName', e.target.value)}
+                                                placeholder="Ex: Durand"
+                                            />
+                                        </div>
                                     </div>
 
-                                    <div className="relative group flex-1">
-                                        <label className="text-xs font-bold text-gray-600 uppercase block mb-1">Nationalité</label>
-                                        <select
-                                            className="w-full bg-white border border-gray-200 rounded-lg py-2 pl-3 pr-8 text-sm font-bold text-gray-700 cursor-pointer hover:border-blue-300 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all"
-                                            value={activePerson.nationality}
-                                            onChange={(e) => handleUpdatePerson('nationality', e.target.value)}
-                                        >
-                                            {Object.values(NationalityGroup).map(s => (
-                                                <option key={s} value={s}>{nationalityLabels[s] || s}</option>
-                                            ))}
-                                        </select>
+                                    <div className="flex flex-wrap gap-4">
+                                        {/* STATUS SELECTOR */}
+                                        {/* ... keeping status selectors but visually cleaner */}
+                                        <div className="relative group flex-1">
+                                            <label className="text-xs font-bold text-gray-600 uppercase block mb-1">Mon Statut</label>
+                                            <select
+                                                className="w-full bg-white border border-gray-200 rounded-lg py-2 pl-3 pr-8 text-sm font-bold text-gray-700 cursor-pointer hover:border-blue-300 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all"
+                                                value={activePerson.status}
+                                                onChange={(e) => handleUpdatePerson('status', e.target.value)}
+                                            >
+                                                {Object.values(PersonStatus)
+                                                    .filter(s => activePerson.role !== 'GUARANTOR' || s !== 'STUDENT')
+                                                    .map(s => (
+                                                        <option key={s} value={s}>{statusLabels[s] || s}</option>
+                                                    ))}
+                                            </select>
+                                        </div>
+
+                                        <div className="relative group flex-1">
+                                            <label className="text-xs font-bold text-gray-600 uppercase block mb-1">Nationalité</label>
+                                            <select
+                                                className="w-full bg-white border border-gray-200 rounded-lg py-2 pl-3 pr-8 text-sm font-bold text-gray-700 cursor-pointer hover:border-blue-300 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all"
+                                                value={activePerson.nationality}
+                                                onChange={(e) => handleUpdatePerson('nationality', e.target.value)}
+                                            >
+                                                {Object.values(NationalityGroup).map(s => (
+                                                    <option key={s} value={s}>{nationalityLabels[s] || s}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        {activePerson.role === 'APPLICANT' && (
+                                            <div className="flex-1 min-w-[150px]">
+                                                <label className="text-xs font-bold text-gray-600 uppercase block mb-1">Date de naissance</label>
+                                                <MaskedDateInput
+                                                    className="w-full bg-white border border-gray-200 rounded-lg py-2 px-3 text-sm font-bold text-gray-700 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all"
+                                                    value={activePerson.birthDate ? new Date(activePerson.birthDate).toISOString().split('T')[0] : ''}
+                                                    onChange={(val) => {
+                                                        const dateObj = new Date(val);
+                                                        const ageDiff = Date.now() - dateObj.getTime();
+                                                        const ageDate = new Date(ageDiff);
+                                                        const isMinor = Math.abs(ageDate.getUTCFullYear() - 1970) < 18;
+
+                                                        // Use ISO string to satisfy Prisma DateTime
+                                                        try {
+                                                            const isoDate = new Date(val).toISOString();
+                                                            handleUpdatePerson('birthDate', isoDate);
+                                                            handleUpdatePerson('isMinor', isMinor);
+                                                        } catch (e) {
+                                                            // fallback
+                                                            handleUpdatePerson('birthDate', val);
+                                                        }
+                                                    }}
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* CONTENT GRID */}
+                            <div className="p-6 grid gap-8">
+                                {/* CONTACT & GUARANTOR TYPE */}
+                                <div className="grid sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="text-xs font-bold text-gray-600 uppercase block mb-1">Email</label>
+                                        <input
+                                            type="email"
+                                            className="block w-full text-sm text-gray-900 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all placeholder-gray-400"
+                                            value={activePerson.email || ''}
+                                            onChange={(e) => handleUpdatePerson('email', e.target.value)}
+                                            placeholder="Ex: jean.dupont@email.com"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-bold text-gray-600 uppercase block mb-1">Téléphone</label>
+                                        <input
+                                            type="tel"
+                                            className="block w-full text-sm text-gray-900 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all placeholder-gray-400"
+                                            value={activePerson.phone || ''}
+                                            onChange={(e) => handleUpdatePerson('phone', e.target.value)}
+                                            placeholder="Ex: 06 12 34 56 78"
+                                        />
                                     </div>
 
                                     {activePerson.role === 'APPLICANT' && (
-                                        <div className="flex-1 min-w-[150px]">
-                                            <label className="text-xs font-bold text-gray-600 uppercase block mb-1">Date de naissance</label>
-                                            <MaskedDateInput
-                                                className="w-full bg-white border border-gray-200 rounded-lg py-2 px-3 text-sm font-bold text-gray-700 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all"
-                                                value={activePerson.birthDate ? new Date(activePerson.birthDate).toISOString().split('T')[0] : ''}
-                                                onChange={(val) => {
-                                                    const dateObj = new Date(val);
-                                                    const ageDiff = Date.now() - dateObj.getTime();
-                                                    const ageDate = new Date(ageDiff);
-                                                    const isMinor = Math.abs(ageDate.getUTCFullYear() - 1970) < 18;
-
-                                                    // Use ISO string to satisfy Prisma DateTime
-                                                    try {
-                                                        const isoDate = new Date(val).toISOString();
-                                                        handleUpdatePerson('birthDate', isoDate);
-                                                        handleUpdatePerson('isMinor', isMinor);
-                                                    } catch (e) {
-                                                        // fallback
-                                                        handleUpdatePerson('birthDate', val);
-                                                    }
-                                                }}
-                                            />
+                                        <div className="sm:col-span-2">
+                                            <label className="text-xs font-bold text-gray-600 uppercase block mb-1">Revenus mensuels nets (€)</label>
+                                            <div className="relative">
+                                                <input
+                                                    type="number"
+                                                    min="0"
+                                                    className="block w-full text-sm text-gray-900 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all placeholder-gray-400"
+                                                    value={(activePerson as any).income ?? ''}
+                                                    onChange={(e) => handleUpdatePerson('income', e.target.value === '' ? null : parseInt(e.target.value))}
+                                                    placeholder="Ex: 800 (Mettre 0 si aucun revenu)"
+                                                />
+                                                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">€</div>
+                                            </div>
+                                            <p className="text-xs text-gray-400 mt-1">
+                                                Indiquez vos revenus personnels (salaires, bourses, allocations...). Mettez 0 si vous n'en avez pas.
+                                            </p>
                                         </div>
                                     )}
                                 </div>
-                            </div>
-                        </div>
 
-                        {/* CONTENT GRID */}
-                        <div className="p-6 grid gap-8">
-                            {/* CONTACT & GUARANTOR TYPE */}
-                            <div className="grid sm:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="text-xs font-bold text-gray-600 uppercase block mb-1">Email</label>
-                                    <input
-                                        type="email"
-                                        className="block w-full text-sm text-gray-900 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all placeholder-gray-400"
-                                        value={activePerson.email || ''}
-                                        onChange={(e) => handleUpdatePerson('email', e.target.value)}
-                                        placeholder="Ex: jean.dupont@email.com"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="text-xs font-bold text-gray-600 uppercase block mb-1">Téléphone</label>
-                                    <input
-                                        type="tel"
-                                        className="block w-full text-sm text-gray-900 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all placeholder-gray-400"
-                                        value={activePerson.phone || ''}
-                                        onChange={(e) => handleUpdatePerson('phone', e.target.value)}
-                                        placeholder="Ex: 06 12 34 56 78"
-                                    />
-                                </div>
-
-                                {activePerson.role === 'APPLICANT' && (
-                                    <div className="sm:col-span-2">
-                                        <label className="text-xs font-bold text-gray-600 uppercase block mb-1">Revenus mensuels nets (€)</label>
-                                        <div className="relative">
-                                            <input
-                                                type="number"
-                                                min="0"
-                                                className="block w-full text-sm text-gray-900 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all placeholder-gray-400"
-                                                value={(activePerson as any).income ?? ''}
-                                                onChange={(e) => handleUpdatePerson('income', e.target.value === '' ? null : parseInt(e.target.value))}
-                                                placeholder="Ex: 800 (Mettre 0 si aucun revenu)"
-                                            />
-                                            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">€</div>
+                                {activePerson.role === 'GUARANTOR' && (
+                                    <div className="bg-white border-2 border-gray-100 p-4 rounded-xl flex items-center gap-4">
+                                        <Shield className="text-gray-400 w-6 h-6" />
+                                        <div className="flex-1">
+                                            <label className="text-xs font-bold text-gray-900 block mb-1">Type de Garant</label>
+                                            <select
+                                                className="w-full text-sm font-medium text-gray-700 bg-transparent border-none p-0 focus:ring-0 cursor-pointer hover:text-blue-600 transition-colors"
+                                                value={activePerson.guarantorType || 'PERSON'}
+                                                onChange={(e) => handleUpdatePerson('guarantorType', e.target.value)}
+                                            >
+                                                <option value="PERSON">Personne Physique (Parent, proche...)</option>
+                                                <option value="ORGANISM">Organisme (Visale, Garantme...)</option>
+                                            </select>
                                         </div>
-                                        <p className="text-xs text-gray-400 mt-1">
-                                            Indiquez vos revenus personnels (salaires, bourses, allocations...). Mettez 0 si vous n'en avez pas.
-                                        </p>
                                     </div>
+                                )}
+
+                                {/* DOCUMENT ZONES */}
+                                <div>
+                                    <h3 className="text-lg font-bold text-gray-900 border-b border-gray-100 pb-2 mb-4">
+                                        Pièces Justificatives <span className="text-gray-400 font-normal text-sm ml-2">Mises à jour selon votre profil</span>
+                                    </h3>
+
+                                    <div className="space-y-4">
+                                        {requirements?.required.map(docType => (
+                                            <DocumentDropZone
+                                                key={`${activePerson.id}-${docType}`}
+                                                docType={docType}
+                                                required={true}
+                                                personId={activePerson.id}
+                                                existingDoc={activePerson.documents?.find(d => d.type === docType)}
+                                            />
+                                        ))}
+
+                                        {requirements?.orGroups.map((group, idx) => {
+                                            const groupHasDoc = group.some(dt => activePerson.documents?.some(d => d.type === dt));
+                                            return (
+                                                <div key={idx} className={`p-5 rounded-xl border-2 border-dashed transition-all ${groupHasDoc ? 'border-green-200 bg-green-50/50' : 'border-gray-200 bg-gray-50/50'}`}>
+                                                    <div className="flex justify-between items-center mb-3">
+                                                        <span className="font-bold text-gray-700 text-sm">Justificatif de Ressources (Choisir 1 option)</span>
+                                                        {groupHasDoc && <span className="bg-green-100 text-green-700 text-[10px] font-bold px-2 py-0.5 rounded">Validé</span>}
+                                                    </div>
+                                                    <div className="grid sm:grid-cols-2 gap-3">
+                                                        {group.map(dt => (
+                                                            <DocumentDropZone
+                                                                key={`${activePerson.id}-${dt}`}
+                                                                docType={dt}
+                                                                required={false}
+                                                                mini
+                                                                personId={activePerson.id}
+                                                                existingDoc={activePerson.documents?.find(d => d.type === dt)}
+                                                            />
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )
+                                        })}
+
+                                        {requirements?.required.length === 0 && requirements?.orGroups.length === 0 && (
+                                            <div className="text-center p-8 bg-green-50 rounded-xl border border-green-100">
+                                                <CheckCircle2 className="w-8 h-8 text-green-500 mx-auto mb-2" />
+                                                <h3 className="font-bold text-green-800">Aucun document requis</h3>
+                                                <p className="text-sm text-green-600">Selon votre profil, vous n'avez pas de justificatif obligatoire à fournir.</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* FOOTER ACTIONS */}
+                            {/* FOOTER ACTIONS */}
+                            <div className="bg-gray-50 p-4 border-t border-gray-100 flex justify-between items-center">
+                                {activePerson.role === 'GUARANTOR' ? (
+                                    <button
+                                        onClick={handleDeleteGuarantor}
+                                        className="text-red-500 hover:text-red-700 text-sm font-bold hover:underline"
+                                    >
+                                        Supprimer ce garant
+                                    </button>
+                                ) : <div></div>}
+
+                                {(unsavedChanges || activePerson.role === 'APPLICANT') && (
+                                    <button
+                                        onClick={handleSave}
+                                        // disabled={!unsavedChanges} // Optional: allow explicit save even if no detected change
+                                        className={`px-6 py-2 rounded-lg font-bold transition shadow-md ${unsavedChanges
+                                            ? 'bg-blue-600 text-white hover:bg-blue-700 animate-pulse'
+                                            : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'}`}
+                                    >
+                                        {unsavedChanges ? 'Enregistrer' : 'Enregistré'}
+                                    </button>
                                 )}
                             </div>
 
-                            {activePerson.role === 'GUARANTOR' && (
-                                <div className="bg-white border-2 border-gray-100 p-4 rounded-xl flex items-center gap-4">
-                                    <Shield className="text-gray-400 w-6 h-6" />
-                                    <div className="flex-1">
-                                        <label className="text-xs font-bold text-gray-900 block mb-1">Type de Garant</label>
-                                        <select
-                                            className="w-full text-sm font-medium text-gray-700 bg-transparent border-none p-0 focus:ring-0 cursor-pointer hover:text-blue-600 transition-colors"
-                                            value={activePerson.guarantorType || 'PERSON'}
-                                            onChange={(e) => handleUpdatePerson('guarantorType', e.target.value)}
-                                        >
-                                            <option value="PERSON">Personne Physique (Parent, proche...)</option>
-                                            <option value="ORGANISM">Organisme (Visale, Garantme...)</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* DOCUMENT ZONES */}
-                            <div>
-                                <h3 className="text-lg font-bold text-gray-900 border-b border-gray-100 pb-2 mb-4">
-                                    Pièces Justificatives <span className="text-gray-400 font-normal text-sm ml-2">Mises à jour selon votre profil</span>
-                                </h3>
-
-                                <div className="space-y-4">
-                                    {requirements?.required.map(docType => (
-                                        <DocumentDropZone
-                                            key={`${activePerson.id}-${docType}`}
-                                            docType={docType}
-                                            required={true}
-                                            personId={activePerson.id}
-                                            existingDoc={activePerson.documents?.find(d => d.type === docType)}
-                                        />
-                                    ))}
-
-                                    {requirements?.orGroups.map((group, idx) => {
-                                        const groupHasDoc = group.some(dt => activePerson.documents?.some(d => d.type === dt));
-                                        return (
-                                            <div key={idx} className={`p-5 rounded-xl border-2 border-dashed transition-all ${groupHasDoc ? 'border-green-200 bg-green-50/50' : 'border-gray-200 bg-gray-50/50'}`}>
-                                                <div className="flex justify-between items-center mb-3">
-                                                    <span className="font-bold text-gray-700 text-sm">Justificatif de Ressources (Choisir 1 option)</span>
-                                                    {groupHasDoc && <span className="bg-green-100 text-green-700 text-[10px] font-bold px-2 py-0.5 rounded">Validé</span>}
-                                                </div>
-                                                <div className="grid sm:grid-cols-2 gap-3">
-                                                    {group.map(dt => (
-                                                        <DocumentDropZone
-                                                            key={`${activePerson.id}-${dt}`}
-                                                            docType={dt}
-                                                            required={false}
-                                                            mini
-                                                            personId={activePerson.id}
-                                                            existingDoc={activePerson.documents?.find(d => d.type === dt)}
-                                                        />
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        )
-                                    })}
-
-                                    {requirements?.required.length === 0 && requirements?.orGroups.length === 0 && (
-                                        <div className="text-center p-8 bg-green-50 rounded-xl border border-green-100">
-                                            <CheckCircle2 className="w-8 h-8 text-green-500 mx-auto mb-2" />
-                                            <h3 className="font-bold text-green-800">Aucun document requis</h3>
-                                            <p className="text-sm text-green-600">Selon votre profil, vous n'avez pas de justificatif obligatoire à fournir.</p>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
                         </div>
-
-                        {/* FOOTER ACTIONS */}
-                        {/* FOOTER ACTIONS */}
-                        <div className="bg-gray-50 p-4 border-t border-gray-100 flex justify-between items-center">
-                            {activePerson.role === 'GUARANTOR' ? (
-                                <button
-                                    onClick={handleDeleteGuarantor}
-                                    className="text-red-500 hover:text-red-700 text-sm font-bold hover:underline"
-                                >
-                                    Supprimer ce garant
-                                </button>
-                            ) : <div></div>}
-
-                            {(unsavedChanges || activePerson.role === 'APPLICANT') && (
-                                <button
-                                    onClick={handleSave}
-                                    // disabled={!unsavedChanges} // Optional: allow explicit save even if no detected change
-                                    className={`px-6 py-2 rounded-lg font-bold transition shadow-md ${unsavedChanges
-                                        ? 'bg-blue-600 text-white hover:bg-blue-700 animate-pulse'
-                                        : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'}`}
-                                >
-                                    {unsavedChanges ? 'Enregistrer' : 'Enregistré'}
-                                </button>
-                            )}
+                    ) : (
+                        <div className="text-center py-24 bg-white border border-dashed border-gray-300 rounded-2xl">
+                            <User className="w-16 h-16 text-gray-200 mx-auto mb-6" />
+                            <h2 className="text-2xl font-black text-gray-900 mb-2">Bienvenue dans votre dossier</h2>
+                            <p className="text-gray-500 mb-8 max-w-md mx-auto">Pour commencer à candidater, créez votre profil candidat. C'est simple et rapide.</p>
+                            <button onClick={() => handleCreatePerson('APPLICANT')} disabled={isCreating} className="bg-blue-600 text-white px-8 py-4 rounded-full font-bold hover:bg-blue-700 transition shadow-lg hover:shadow-xl disabled:opacity-50 transform hover:-translate-y-1">
+                                Créer mon profil Candidat
+                            </button>
                         </div>
-
-                    </div>
-                ) : (
-                    <div className="text-center py-24 bg-white border border-dashed border-gray-300 rounded-2xl">
-                        <User className="w-16 h-16 text-gray-200 mx-auto mb-6" />
-                        <h2 className="text-2xl font-black text-gray-900 mb-2">Bienvenue dans votre dossier</h2>
-                        <p className="text-gray-500 mb-8 max-w-md mx-auto">Pour commencer à candidater, créez votre profil candidat. C'est simple et rapide.</p>
-                        <button onClick={() => handleCreatePerson('APPLICANT')} disabled={isCreating} className="bg-blue-600 text-white px-8 py-4 rounded-full font-bold hover:bg-blue-700 transition shadow-lg hover:shadow-xl disabled:opacity-50 transform hover:-translate-y-1">
-                            Créer mon profil Candidat
-                        </button>
-                    </div>
-                )}
+                    )}
+                </div>
             </div>
         </div>
-    </div>
-);
+    );
 }
 
 function DocumentDropZone({ docType, required, mini, personId, existingDoc }: { docType: DocType, required?: boolean, mini?: boolean, personId: string, existingDoc?: UserDocument }) {
