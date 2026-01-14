@@ -14,7 +14,7 @@ const EventSchema = z.object({
     ]),
     residenceId: z.string().optional(),
     city: z.string().optional(),
-    metadata: z.record(z.any()).default({}),
+    metadata: z.record(z.string(), z.any()).default({}),
     sessionId: z.string().optional(), // Can be passed explicitly or inferred
 });
 
