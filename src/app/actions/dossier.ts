@@ -42,31 +42,31 @@ export async function upsertPerson(data: UpsertPersonData) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { error: 'Unauthorized' };
 
-    // Fire & Forget update last seen
+    // Update Last Seen
     updateLastSeen(user.id);
 
-    // Prevent Duplicate APPLICANT creation
-    if (data.role === 'APPLICANT' && (!data.id || data.id.length < 10)) {
-        const existingApplicant = await prisma.dossierPerson.findFirst({
-            where: {
-                profileId: user.id,
-                role: 'APPLICANT'
-            }
-        });
-        if (existingApplicant) {
-            data.id = existingApplicant.id;
-        }
-    }
-
-    // Ensure profile exists
-    let profile = await prisma.profile.findUnique({ where: { id: user.id } });
-    if (!profile) {
-        profile = await prisma.profile.create({
-            data: { id: user.id, email: user.email }
-        });
-    }
-
     try {
+        // Prevent Duplicate APPLICANT creation
+        if (data.role === 'APPLICANT' && (!data.id || data.id.length < 10)) {
+            const existingApplicant = await prisma.dossierPerson.findFirst({
+                where: {
+                    profileId: user.id,
+                    role: 'APPLICANT'
+                }
+            });
+            if (existingApplicant) {
+                data.id = existingApplicant.id;
+            }
+        }
+
+        // Ensure profile exists
+        let profile = await prisma.profile.findUnique({ where: { id: user.id } });
+        if (!profile) {
+            profile = await prisma.profile.create({
+                data: { id: user.id, email: user.email }
+            });
+        }
+
         // Sanitize data: Remove nested relations like 'documents' and metadata
         const { documents, id, createdAt, updatedAt, profileId, income, cafNumber, arrivalDate, ...cleanData } = data as any;
 
@@ -111,8 +111,8 @@ export async function upsertPerson(data: UpsertPersonData) {
         revalidatePath('/account/dossier');
         return { success: true };
     } catch (e: any) {
-        console.error(e);
-        return { error: e.message };
+        console.error("UPSERT PERSON ERROR:", e);
+        return { error: `Erreur Technique: ${e.message}` };
     }
 }
 
