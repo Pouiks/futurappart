@@ -150,7 +150,7 @@ export async function POST(request: Request) {
                 price: unit.price,
                 surface: toNumber(unit.surface),
                 priceM2: (toNumber(unit.surface) > 0) ? unit.price / toNumber(unit.surface) : null,
-                availability: unit.availability ?? null,
+                availability: (unit.availability ?? null) as any,
                 trustScore: unit.residence.trustScore || 50,
                 residenceStatus: unit.residence.status as any, // Cast to any for compatibility
                 cityStats: {
