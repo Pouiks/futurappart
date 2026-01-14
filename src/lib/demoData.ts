@@ -52,16 +52,30 @@ export const demoUnits = [
 export const generateMockUnits = (city: string, count: number = 20) => {
     const cityCap = city.charAt(0).toUpperCase() + city.slice(1);
 
+    // Use existing local assets
+    const demoImages = [
+        '/assets/student_studio_cozy.png',
+        '/assets/student_studio_modern.png',
+        '/assets/student_studio_minimal.png',
+        '/assets/default_studio.png',
+        '/assets/default_t2.png'
+    ];
+
+    // Generic heroes (can reuse room images if no city heroes available)
+    const heroImage = '/assets/student_room.png';
+
     return Array.from({ length: count }).map((_, i) => ({
         id: `mock-${city}-${i}`,
-        type: i % 3 === 0 ? 'T2' : 'STUDIO', // Mix of types
-        price: 450 + (i * 50) + (Math.random() > 0.5 ? 20 : 0), // Random prices
-        surface: 18 + (i % 10), // Random surfaces
+        type: i % 3 === 0 ? 'T2' : 'STUDIO',
+        price: 450 + (i * 50) + (Math.random() > 0.5 ? 20 : 0),
+        surface: 18 + (i % 10),
         images: [
-            `/assets/demo${(i % 3) + 1}.jpg`
+            demoImages[i % demoImages.length],
+            demoImages[(i + 1) % demoImages.length],
+            demoImages[(i + 2) % demoImages.length]
         ],
-        description: `Logement étudiant idéal à ${cityCap}. Proche transports et commerces.`,
-        amenities: ['Wifi', 'Meublé', 'Sécurisé'],
+        description: `Logement étudiant idéal à ${cityCap}. Proche transports et commerces. Entièrement meublé et équipé pour votre réussite.`,
+        amenities: ['Wifi Fibre', 'Meublé', 'Sécurisé', 'Proche Fac', 'Laverie'],
         availability: 'IMMEDIATE',
         url: `/logement/mock-${city}-${i}`,
         residence: {
@@ -69,7 +83,7 @@ export const generateMockUnits = (city: string, count: number = 20) => {
             name: `Résidence Étudiante ${cityCap} ${i + 1}`,
             cityNormalized: city.toLowerCase(),
             address: `${10 + i} Rue de l'Université, ${cityCap}`,
-            heroImageUrl: `/assets/demo_hero_${city.toLowerCase()}.jpg`, // Will fallback if not found
+            heroImageUrl: heroImage,
             url: '',
             status: 'NON_PARTNER',
             slaDays: null,
