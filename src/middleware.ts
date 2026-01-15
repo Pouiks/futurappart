@@ -55,8 +55,8 @@ export async function middleware(request: NextRequest) {
 
         // [MVP Security] Check allowed email (Whitelist)
         // In production, use a 'role' column in profiles or public.admins table
-        const allowedAdmins = ['virgile@monlogementetudiant.com', 'admin@example.com']; // Replace with user's email if known or env var
-        if (user.email && !allowedAdmins.includes(user.email) && !user.email.endsWith('@monlogementetudiant.com')) {
+        const allowedAdmins = ['virgile@futurappart.com', 'admin@example.com']; // Replace with user's email if known or env var
+        if (user.email && !allowedAdmins.includes(user.email) && !user.email.endsWith('@futurappart.com')) {
             // Basic restriction: Allow specific emails or domain
             // return NextResponse.json({ error: 'Fobidden Access' }, { status: 403 });
             // Or redirect to home

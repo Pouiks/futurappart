@@ -21,7 +21,7 @@ export async function relaunchStudentEmail(leadId: string) {
         // 2. Generate Link
         // Current host for absolute URL
         const headersList = await headers();
-        const host = headersList.get('host') || 'monlogementetudiant.com';
+        const host = headersList.get('host') || 'futurappart.com';
         const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https';
 
         // Simple Link to Dashboard (User must log in if not already)

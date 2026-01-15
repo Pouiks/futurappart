@@ -15,7 +15,7 @@ export const Footer = () => {
                         <Link href="/" className="flex items-center gap-2 mb-6 text-white inline-block">
                             <Image
                                 src="/futurappartlogo.png"
-                                alt="MonLogementEtudiant"
+                                alt="futurappart"
                                 width={200}
                                 height={60}
                                 className="h-20 w-auto object-contain rounded bg-white p-2"
@@ -59,7 +59,7 @@ export const Footer = () => {
                 </div>
 
                 <div className="border-t border-gray-800 pt-8 text-center text-sm text-gray-500">
-                    <p>&copy; {new Date().getFullYear()} MonLogementEtudiant.com</p>
+                    <p>&copy; {new Date().getFullYear()} Futurappart.com</p>
                 </div>
             </div>
         </footer>

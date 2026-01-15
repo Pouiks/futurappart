@@ -79,7 +79,7 @@ async function main() {
                         address: row['Adresse'] || rawCity,
                         cityNormalized,
                         sourceId,
-                        url: row['URL'] || `https://monlogementetudiant.fr/${cityNormalized}/residence-${count}`,
+                        url: row['URL'] || `https://futurappart.fr/${cityNormalized}/residence-${count}`,
                         status
                     },
                     create: {
@@ -88,7 +88,7 @@ async function main() {
                         address: row['Adresse'] || rawCity,
                         cityNormalized,
                         sourceId,
-                        url: row['URL'] || `https://monlogementetudiant.fr/${cityNormalized}/residence-${count}`,
+                        url: row['URL'] || `https://futurappart.fr/${cityNormalized}/residence-${count}`,
                         status,
                         trustScore: 80
                     }

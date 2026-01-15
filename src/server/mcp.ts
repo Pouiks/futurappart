@@ -7,7 +7,7 @@ import { UnitTypeEnum } from "@prisma/client";
 
 // Create an MCP server
 const server = new McpServer({
-    name: "MonLogementEtudiant",
+    name: "futurappart",
     version: "1.0.0",
 });
 
@@ -81,7 +81,7 @@ server.tool(
 async function main() {
     const transport = new StdioServerTransport();
     await server.connect(transport);
-    console.error("MCP Server MonLogementEtudiant running on stdio");
+    console.error("MCP Server futurappart running on stdio");
 }
 
 main().catch((error) => {

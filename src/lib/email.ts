@@ -20,8 +20,8 @@ class EmailService {
         this.apiInstance.setApiKey(Brevo.TransactionalEmailsApiApiKeys.apiKey, process.env.BREVO_API_KEY || '');
 
         this.sender = {
-            email: process.env.BREVO_SENDER_EMAIL || 'contact@monlogementetudiant.com',
-            name: process.env.BREVO_SENDER_NAME || 'MonLogementEtudiant'
+            email: process.env.BREVO_SENDER_EMAIL || 'contact@futurappart.com',
+            name: process.env.BREVO_SENDER_NAME || 'futurappart'
         };
     }
 
@@ -163,7 +163,7 @@ class EmailService {
                 <strong>La team FuturAppart</strong>
             </p>
             
-            <img src="https://monlogementetudiant.com/futurappartlogo.png" alt="FuturAppart" style="width: 150px; height: auto; display: block; margin-top: 10px;" />
+            <img src="https://futurappart.com/futurappartlogo.png" alt="FuturAppart" style="width: 150px; height: auto; display: block; margin-top: 10px;" />
         `;
 
         return this.sendEmail({

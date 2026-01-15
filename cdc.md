@@ -1,4 +1,4 @@
-# MonLogementEtudiant - Cahier des Charges & Spécifications
+# futurappart - Cahier des Charges & Spécifications
 
 ## 1. Vision & Architecture
 

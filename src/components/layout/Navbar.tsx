@@ -36,13 +36,13 @@ export const Navbar = ({ counts, alerts }: NavbarProps) => {
                 <Link href="/" className="flex items-center gap-2 group flex-shrink-0">
                     <Image
                         src="/futurappartlogo.png"
-                        alt="MonLogementEtudiant"
+                        alt="futurappart"
                         width={300}
                         height={100}
                         className="h-16 w-auto object-contain"
                         priority
                     />
-                    <span className="sr-only">MonLogementEtudiant</span>
+                    <span className="sr-only">futurappart</span>
                 </Link>
 
                 {/* Desktop Navigation (Centered & Grouped) */}

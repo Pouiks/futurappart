@@ -101,7 +101,7 @@ export const blogPosts: BlogPost[] = [
                 <ul class="list-disc list-inside space-y-2 ml-4">
                     <li><strong>Coût :</strong> Environ 3.5% du montant du loyer annuel.</li>
                     <li><strong>Avantage :</strong> Ils délivrent un certificat d'éligibilité en 2h. Très rassurant pour les bailleurs privés.</li>
-                    <li>MonLogementEtudiant est partenaire et peut accélérer votre dossier.</li>
+                    <li>futurappart est partenaire et peut accélérer votre dossier.</li>
                 </ul>
 
                 <h2 class="text-2xl font-bold text-gray-900 mt-8 mb-4">3. Le Garant Bancaire (Obsolète)</h2>
