@@ -139,7 +139,7 @@ export async function upsertPerson(data: UpsertPersonData) {
         }
 
         revalidatePath('/account/dossier');
-        revalidateTag(`dossier-${user.id}`);
+
 
         return {
             success: true,
@@ -182,7 +182,6 @@ export async function deletePerson(personId: string) {
 
     await prisma.dossierPerson.delete({ where: { id: personId } });
     revalidatePath('/account/dossier');
-    revalidateTag(`dossier-${user.id}`);
     return { success: true };
 }
 
@@ -298,7 +297,6 @@ export async function saveUserDocument(personId: string, docType: string, filePa
             }
         });
         revalidatePath('/account/dossier');
-        revalidateTag(`dossier-${user.id}`);
         return { success: true };
     } catch (e: any) {
         console.error(e);
