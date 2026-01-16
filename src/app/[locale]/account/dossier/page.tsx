@@ -1,28 +1,17 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { getCachedUser } from '@/lib/auth-cache';
 import { prisma } from '@/lib/db';
 import { redirect } from 'next/navigation';
+import { unstable_cache } from 'next/cache';
 import DossierBuilder from '@/components/features/dossier/DossierBuilder';
 
 async function getDossierData() {
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                getAll() { return cookieStore.getAll() },
-                setAll(cookiesToSet) {
-                    // We are in a Server Component
-                },
-            },
-        }
-    );
-
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getCachedUser();
     if (!user) return null;
 
     try {
+        // DIRECT DB FETCH - NO CACHE to debug persistence
         const profile = await prisma.profile.findUnique({
             where: { id: user.id },
             include: {
@@ -33,8 +22,13 @@ async function getDossierData() {
                 }
             }
         });
-        console.log("DossierPage: Fetched Profile:", JSON.stringify(profile, null, 2));
-        return { user, profile };
+
+        console.log("DossierPage: DIRECT DB FETCH (No Cache)");
+
+        // Serialize to ensure Dates are strings (Fixes hydration issue)
+        const serializedProfile = JSON.parse(JSON.stringify(profile));
+
+        return { user, profile: serializedProfile };
     } catch (error) {
         console.error("DossierPage: DB Init Error, using fallback:", error);
         // Fallback for Demo Mode / DB Failure

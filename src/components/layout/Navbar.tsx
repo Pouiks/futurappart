@@ -3,8 +3,10 @@
 import { useTranslations, useLocale } from 'next-intl';
 import { Link, usePathname, useRouter } from '@/i18n/navigation';
 import { UserMenu } from './UserMenu';
+import { MobileMenu } from './MobileMenu';
 import { useSearchParams } from 'next/navigation';
-import { ChevronDown, BookOpen, Coins, ShieldCheck, HelpCircle, Briefcase, MapPin } from 'lucide-react';
+import { ChevronDown, BookOpen, Coins, ShieldCheck, HelpCircle, Briefcase, MapPin, Menu } from 'lucide-react';
+import { useState } from 'react';
 import Image from 'next/image';
 
 interface NavbarProps {
@@ -26,20 +28,31 @@ export const Navbar = ({ counts, alerts }: NavbarProps) => {
 
 
 
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
     return (
         <header className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-b border-gray-100 transition-all duration-300">
             <div className="container mx-auto px-4 md:px-8 max-w-[1600px] py-6 flex items-center justify-between">
 
-
+                {/* Mobile Menu Toggle (Left on Mobile) */}
+                <div className="md:hidden mr-4">
+                    <button
+                        onClick={() => setIsMobileMenuOpen(true)}
+                        className="p-2 -ml-2 text-gray-600 hover:text-blue-600 hover:bg-gray-100 rounded-lg transition-colors"
+                        aria-label="Ouvrir le menu"
+                    >
+                        <Menu className="w-6 h-6" />
+                    </button>
+                </div>
 
                 {/* Logo */}
-                <Link href="/" className="flex items-center gap-2 group flex-shrink-0">
+                <Link href="/" className="flex items-center gap-2 group flex-shrink-0 mr-auto md:mr-0">
                     <Image
                         src="/futurappartlogo.png"
                         alt="futurappart"
                         width={300}
                         height={100}
-                        className="h-16 w-auto object-contain"
+                        className="h-10 md:h-16 w-auto object-contain"
                         priority
                     />
                     <span className="sr-only">futurappart</span>
@@ -155,6 +168,8 @@ export const Navbar = ({ counts, alerts }: NavbarProps) => {
                     <UserMenu counts={counts} alerts={alerts} />
                 </div>
             </div>
+
+            <MobileMenu isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} />
         </header>
     );
 };

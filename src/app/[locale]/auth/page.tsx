@@ -57,9 +57,13 @@ const PasswordStrength = ({ password }: { password: string }) => {
     );
 };
 
-export default function AuthPage() {
+interface AuthPageProps {
+    defaultMode?: 'login' | 'signup';
+}
+
+export default function AuthPage({ defaultMode }: AuthPageProps = {}) {
     const searchParams = useSearchParams();
-    const modeParam = searchParams.get('mode') || 'signup';
+    const modeParam = searchParams.get('mode') || defaultMode || 'signup';
     const intentId = searchParams.get('intent');
     const returnTo = searchParams.get('returnTo');
     const [mode, setMode] = useState(modeParam);

@@ -186,7 +186,11 @@ export default async function CityPage({
             </div>
 
             {/* Sticky Filters */}
-            <CityFilterBar currentCity={cityNormalized} />
+            <CityFilterBar
+                currentCity={cityNormalized}
+                totalResults={candidates.length}
+                candidates={candidates.map(u => ({ price: u.price, type: u.type }))}
+            />
 
             <main className="w-full max-w-[1920px] mx-auto px-4 md:px-6 py-6 transition-all">
                 {candidates.length > 0 ? (

@@ -88,12 +88,12 @@ export const CityResults = ({ candidates, city }: CityResultsProps) => {
         <div className="flex flex-col h-full">
 
             {/* Main Content Area */}
-            <div className={`flex flex-col-reverse lg:flex-row gap-6 ${showMap ? 'h-[calc(100vh-160px)]' : ''}`}>
+            <div className={`flex flex-col lg:flex-row gap-6 ${showMap ? 'h-[calc(100vh-140px)]' : ''}`}>
 
                 {/* LIST SECTION */}
                 <div
                     ref={listContainerRef}
-                    className={`transition-all duration-500 ease-in-out ${showMap ? 'lg:w-1/2 overflow-y-auto pr-2' : 'w-full'}`}
+                    className={`transition-all duration-300 ease-in-out ${showMap ? 'hidden lg:block lg:w-1/2 overflow-y-auto pr-2' : 'w-full'}`}
                 >
 
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
@@ -121,28 +121,40 @@ export const CityResults = ({ candidates, city }: CityResultsProps) => {
                         <div className="lg:hidden w-full">
                             <button
                                 onClick={toggleMap}
-                                className="w-full flex justify-center items-center gap-2 px-4 py-3 rounded-xl font-bold bg-white text-gray-900 border border-gray-200 shadow-sm"
+                                className={`w-full flex justify-center items-center gap-2 px-4 py-3 rounded-xl font-bold border shadow-sm transition-colors ${showMap ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-900 border-gray-200'}`}
                             >
-                                {showMap ? 'Voir la liste' : 'Voir la carte'}
+                                {showMap ? (
+                                    <>
+                                        <ListIcon className="w-4 h-4" />
+                                        Voir la liste
+                                    </>
+                                ) : (
+                                    <>
+                                        <MapIcon className="w-4 h-4" />
+                                        Voir la carte
+                                    </>
+                                )}
                             </button>
                         </div>
 
                         {/* Alert Box - Horizontal Banner in List View */}
-                        <div className="flex-1 w-full lg:w-auto bg-blue-50 border border-blue-100 p-3 rounded-xl flex items-center justify-between gap-4 max-w-2xl ml-auto">
-                            <div className="flex items-center gap-3">
-                                <div className="bg-blue-100 p-2 rounded-lg text-xl">🔔</div>
-                                <div>
-                                    <h4 className="font-bold text-gray-900 text-sm">Alerte Nouveauté</h4>
-                                    <p className="text-gray-500 text-xs hidden sm:block">Soyez notifié dès qu'un logement est dispo à {city}.</p>
+                        {!showMap && (
+                            <div className="flex-1 w-full lg:w-auto bg-blue-50 border border-blue-100 p-3 rounded-xl flex items-center justify-between gap-4 max-w-2xl ml-auto">
+                                <div className="flex items-center gap-3">
+                                    <div className="bg-blue-100 p-2 rounded-lg text-xl">🔔</div>
+                                    <div>
+                                        <h4 className="font-bold text-gray-900 text-sm">Alerte Nouveauté</h4>
+                                        <p className="text-gray-500 text-xs hidden sm:block">Soyez notifié dès qu'un logement est dispo à {city}.</p>
+                                    </div>
                                 </div>
+                                <button className="px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700 whitespace-nowrap">
+                                    Créer une alerte
+                                </button>
                             </div>
-                            <button className="px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700 whitespace-nowrap">
-                                Créer une alerte
-                            </button>
-                        </div>
+                        )}
                     </div>
 
-                    <div className={`grid gap-4 ${showMap ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4'}`}>
+                    <div className={`grid gap-4 ${showMap ? 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3 pl-1' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5'}`}>
                         {candidates.map((u, idx) => {
                             return (
                                 <div
@@ -160,7 +172,7 @@ export const CityResults = ({ candidates, city }: CityResultsProps) => {
                 </div>
 
                 {/* MAP SECTION */}
-                <div className={`transition-all duration-500 ease-in-out relative ${showMap ? 'lg:w-1/2 h-[400px] lg:h-full opacity-100' : 'w-0 h-0 opacity-0 overflow-hidden'}`}>
+                <div className={`transition-all duration-300 ease-in-out relative ${showMap ? 'w-full h-full lg:w-1/2 lg:h-full opacity-100' : 'w-0 h-0 opacity-0 overflow-hidden'}`}>
                     <div className="absolute inset-0 rounded-2xl overflow-hidden shadow-inner border border-gray-200 bg-gray-100">
                         {showMap && (
                             <CityMap

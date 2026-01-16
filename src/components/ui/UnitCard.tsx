@@ -87,8 +87,8 @@ export const UnitCard: React.FC<UnitCardProps> = ({ unit, rank, isFavorite = fal
                 <FavoriteButton unitId={unit.id} initialIsFavorite={isFavorite} />
             </div>
 
-            {/* Image Section (Top, Full Width) */}
-            <Link href={`/logement/${unit.id}`} className="w-full aspect-[16/10] overflow-hidden relative cursor-pointer block bg-gray-100">
+            {/* Image Section (Top, Full Width) - Reduced Height aspect-video (16/9) */}
+            <Link href={`/logement/${unit.id}`} className="w-full aspect-video overflow-hidden relative cursor-pointer block bg-gray-100">
                 <img
                     src={(unit.photo && !unit.photo.includes('placehold.co')) ? unit.photo : getPlaceholderImage(unit.type, unit.id)}
                     alt={unit.residenceName}
@@ -96,54 +96,54 @@ export const UnitCard: React.FC<UnitCardProps> = ({ unit, rank, isFavorite = fal
                 />
 
                 {/* Brand Badge (Bottom Left of Image) */}
-                <div className="absolute bottom-3 left-3 bg-white/95 backdrop-blur px-2.5 py-1 rounded-md text-xs font-bold text-gray-800 shadow-sm border border-gray-100/50">
+                <div className="absolute bottom-2 left-2 bg-white/95 backdrop-blur px-2 py-0.5 rounded text-[10px] uppercase font-bold text-gray-800 shadow-sm border border-gray-100/50">
                     {displayBrand}
                 </div>
 
                 {/* Availability Badge (Top Left of Image - Cleaner) */}
-                <div className={`absolute top-3 left-3 px-2 py-1 rounded-md text-[10px] uppercase font-bold tracking-wide shadow-sm backdrop-blur-md ${isAvailable ? 'bg-green-500/90 text-white' : 'bg-purple-600/90 text-white'}`}>
+                <div className={`absolute top-2 left-2 px-1.5 py-0.5 rounded text-[9px] uppercase font-bold tracking-wide shadow-sm backdrop-blur-md ${isAvailable ? 'bg-green-500/90 text-white' : 'bg-purple-600/90 text-white'}`}>
                     {availableLabel}
                 </div>
             </Link>
 
-            {/* Content Section (Bottom) */}
-            <div className="flex-1 p-5 md:p-6 flex flex-col">
-                <div className="flex justify-between items-start mb-3">
-                    <Link href={`/logement/${unit.id}`} className="block group/title flex-1 pr-3">
-                        <h3 className="text-xl font-bold text-gray-900 leading-snug group-hover/title:text-blue-600 transition cursor-pointer mb-1">
+            {/* Content Section (Bottom) - Compact Padding p-4 */}
+            <div className="flex-1 p-3 md:p-4 flex flex-col">
+                <div className="flex justify-between items-start mb-2">
+                    <Link href={`/logement/${unit.id}`} className="block group/title flex-1 pr-2">
+                        <h3 className="text-lg font-bold text-gray-900 leading-tight group-hover/title:text-blue-600 transition cursor-pointer mb-0.5 line-clamp-1">
                             {cleanName}
                         </h3>
-                        <p className="text-sm text-gray-500">
+                        <p className="text-xs text-gray-500">
                             {t('furnished')} • {unit.surface ? `${unit.surface} m²` : t('surfaceUnknown')}
                         </p>
                     </Link>
 
                     {/* Price Block */}
                     <div className="text-right shrink-0 pl-2">
-                        <span className="text-2xl font-black text-gray-900 block leading-none">{unit.price}€</span>
-                        <span className="text-[10px] text-gray-400 font-medium uppercase tracking-wide">{t('monthCC')}</span>
+                        <span className="text-xl font-black text-gray-900 block leading-none">{unit.price}€</span>
+                        <span className="text-[9px] text-gray-400 font-medium uppercase tracking-wide">{t('monthCC')}</span>
                     </div>
                 </div>
 
                 {/* Divider Line */}
-                <div className="w-full h-px bg-gray-100 my-4"></div>
+                <div className="w-full h-px bg-gray-100 my-2"></div>
 
                 {/* Footer: Tags & CTA */}
                 <div className="mt-auto flex items-center justify-between">
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-1.5">
                         {unit.type && (
-                            <span className="bg-gray-100 text-gray-600 text-xs px-2.5 py-1 rounded-full font-semibold">
+                            <span className="bg-gray-100 text-gray-600 text-[10px] px-2 py-0.5 rounded-full font-semibold">
                                 {unit.type}
                             </span>
                         )}
                         {unit.reasons && unit.reasons.length > 0 && (
-                            <span className="bg-blue-50 text-blue-600 text-xs px-2.5 py-1 rounded-full font-semibold">
+                            <span className="bg-blue-50 text-blue-600 text-[10px] px-2 py-0.5 rounded-full font-semibold text-ellipsis overflow-hidden whitespace-nowrap max-w-[100px]">
                                 {unit.reasons[0]}
                             </span>
                         )}
                         {/* Status Badges - Rule B */}
                         {(unit.scoreDetails?.partnerBonus > 0) && (
-                            <span className="bg-indigo-50 text-indigo-700 text-xs px-2.5 py-1 rounded-full font-bold border border-indigo-100 flex items-center gap-1">
+                            <span className="bg-indigo-50 text-indigo-700 text-[10px] px-2 py-0.5 rounded-full font-bold border border-indigo-100 flex items-center gap-1">
                                 ⭐ Partenaire
                             </span>
                         )}
@@ -151,7 +151,7 @@ export const UnitCard: React.FC<UnitCardProps> = ({ unit, rank, isFavorite = fal
 
                     <Link
                         href={`/logement/${unit.id}`}
-                        className="text-blue-600 font-bold text-sm hover:underline flex items-center gap-1 group/link opacity-0 group-hover:opacity-100 transition-opacity -translate-x-2 group-hover:translate-x-0 duration-300"
+                        className="text-blue-600 font-bold text-xs hover:underline flex items-center gap-1 group/link opacity-0 group-hover:opacity-100 transition-opacity -translate-x-2 group-hover:translate-x-0 duration-300 whitespace-nowrap ml-1"
                     >
                         {t('viewOffer')} &rarr;
                     </Link>

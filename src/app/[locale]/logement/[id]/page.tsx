@@ -246,30 +246,30 @@ export default async function LogementPage({ params }: PageProps) {
                             </div>
                         </div>
 
-                        {/* Key Metrics - Glassmorphism */}
-                        <div className="grid grid-cols-3 gap-4 md:gap-6">
-                            <div className="p-6 rounded-2xl bg-white border border-blue-50 shadow-sm hover:shadow-md transition-all flex flex-col items-center justify-center text-center group">
-                                <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
-                                    <Euro className="w-6 h-6 text-blue-600" />
+                        {/* Key Metrics - Glassmorphism - Compact Mobile */}
+                        <div className="grid grid-cols-3 gap-3 md:gap-6">
+                            <div className="p-3 md:p-6 rounded-2xl bg-white border border-blue-50 shadow-sm hover:shadow-md transition-all flex flex-col items-center justify-center text-center group">
+                                <div className="w-8 h-8 md:w-12 md:h-12 rounded-full bg-blue-50 flex items-center justify-center mb-2 md:mb-3 group-hover:bg-blue-100 transition-colors">
+                                    <Euro className="w-4 h-4 md:w-6 md:h-6 text-blue-600" />
                                 </div>
-                                <span className="text-3xl font-extrabold text-gray-900 tracking-tight">{unit.price}€</span>
-                                <span className="text-xs text-gray-500 uppercase font-bold tracking-wider mt-1">Loyer CC / mois</span>
+                                <span className="text-xl md:text-3xl font-extrabold text-gray-900 tracking-tight">{unit.price}€</span>
+                                <span className="text-[10px] md:text-xs text-gray-500 uppercase font-bold tracking-wider mt-1">Loyer CC</span>
                             </div>
-                            <div className="p-6 rounded-2xl bg-white border border-purple-50 shadow-sm hover:shadow-md transition-all flex flex-col items-center justify-center text-center group">
-                                <div className="w-12 h-12 rounded-full bg-purple-50 flex items-center justify-center mb-3 group-hover:bg-purple-100 transition-colors">
-                                    <Ruler className="w-6 h-6 text-purple-600" />
+                            <div className="p-3 md:p-6 rounded-2xl bg-white border border-purple-50 shadow-sm hover:shadow-md transition-all flex flex-col items-center justify-center text-center group">
+                                <div className="w-8 h-8 md:w-12 md:h-12 rounded-full bg-purple-50 flex items-center justify-center mb-2 md:mb-3 group-hover:bg-purple-100 transition-colors">
+                                    <Ruler className="w-4 h-4 md:w-6 md:h-6 text-purple-600" />
                                 </div>
-                                <span className="text-3xl font-extrabold text-gray-900 tracking-tight">{unit.surface ? unit.surface.toString() : '?'}m²</span>
-                                <span className="text-xs text-gray-500 uppercase font-bold tracking-wider mt-1">Surface habitable</span>
+                                <span className="text-xl md:text-3xl font-extrabold text-gray-900 tracking-tight">{unit.surface ? unit.surface.toString() : '?'}m²</span>
+                                <span className="text-[10px] md:text-xs text-gray-500 uppercase font-bold tracking-wider mt-1">Surface</span>
                             </div>
-                            <div className="p-6 rounded-2xl bg-white border border-yellow-50 shadow-sm hover:shadow-md transition-all flex flex-col items-center justify-center text-center group">
-                                <div className="w-12 h-12 rounded-full bg-yellow-50 flex items-center justify-center mb-3 group-hover:bg-yellow-100 transition-colors">
-                                    <Star className="w-6 h-6 text-yellow-500 fill-yellow-500" />
+                            <div className="p-3 md:p-6 rounded-2xl bg-white border border-yellow-50 shadow-sm hover:shadow-md transition-all flex flex-col items-center justify-center text-center group">
+                                <div className="w-8 h-8 md:w-12 md:h-12 rounded-full bg-yellow-50 flex items-center justify-center mb-2 md:mb-3 group-hover:bg-yellow-100 transition-colors">
+                                    <Star className="w-4 h-4 md:w-6 md:h-6 text-yellow-500 fill-yellow-500" />
                                 </div>
-                                <span className="text-xl md:text-2xl font-extrabold text-gray-900 tracking-tight leading-tight">
+                                <span className="text-sm md:text-2xl font-extrabold text-gray-900 tracking-tight leading-tight line-clamp-2 md:line-clamp-none">
                                     {scoreResult.reasons.length > 0 ? scoreResult.reasons[0] : "Vérifié"}
                                 </span>
-                                <span className="text-xs text-gray-500 uppercase font-bold tracking-wider mt-1">Atout Principal</span>
+                                <span className="text-[10px] md:text-xs text-gray-500 uppercase font-bold tracking-wider mt-1">Atout</span>
                             </div>
                         </div>
                     </section>
@@ -294,7 +294,7 @@ export default async function LogementPage({ params }: PageProps) {
                             Équipements & Services
                             <span className="bg-green-100 text-green-700 text-xs px-3 py-1 rounded-full uppercase tracking-wider">Premium</span>
                         </h2>
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
                             {(unit.amenities && Array.isArray(unit.amenities) && unit.amenities.length > 0 ? (unit.amenities as string[]) : ['Wifi Haut Débit', 'Sécurisé', 'Proche Métro', 'Meublé', 'Laverie', 'Local Vélo', 'Salle de Sport', 'Espace Coworking']).map((s, i) => {
                                 let Icon = Check;
                                 let colorClass = "text-green-600";
@@ -305,11 +305,11 @@ export default async function LogementPage({ params }: PageProps) {
                                 if (s.includes('Laverie') || s.includes('Linge')) { Icon = Shirt; colorClass = "text-cyan-600"; }
                                 if (s.includes('Vélo')) { Icon = Bike; colorClass = "text-indigo-600"; }
                                 return (
-                                    <div key={i} className="flex flex-col items-center p-4 rounded-xl bg-gray-50 border border-gray-100 hover:border-blue-200 hover:bg-blue-50 transition-colors text-center group cursor-default">
-                                        <div className="w-12 h-12 rounded-full bg-white shadow-sm flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                                            <Icon className={`w-6 h-6 ${colorClass}`} />
+                                    <div key={i} className="flex flex-col items-center p-3 md:p-4 rounded-xl bg-gray-50 border border-gray-100 hover:border-blue-200 hover:bg-blue-50 transition-colors text-center group cursor-default">
+                                        <div className="w-8 h-8 md:w-12 md:h-12 rounded-full bg-white shadow-sm flex items-center justify-center mb-2 md:mb-3 group-hover:scale-110 transition-transform">
+                                            <Icon className={`w-4 h-4 md:w-6 md:h-6 ${colorClass}`} />
                                         </div>
-                                        <span className="text-sm font-bold text-gray-700 group-hover:text-blue-800">{s}</span>
+                                        <span className="text-xs md:text-sm font-bold text-gray-700 group-hover:text-blue-800">{s}</span>
                                     </div>
                                 );
                             })}

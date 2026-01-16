@@ -32,15 +32,19 @@ const engine = new DossierEngine();
 export default function DossierBuilder({ userId, initialProfile, user }: DossierBuilderProps) {
     // Initialize persons from profile, merging Profile-level fields into Applicant
     const [persons, setPersons] = useState<PersonWithDocs[]>(() => {
+        console.log("DossierBuilder: Initializing...", initialProfile);
         const base = initialProfile?.dossierPersons || [];
         return base.map((p: any) => {
             if (p.role === 'APPLICANT') {
-                return {
+                const merged = {
                     ...p,
                     income: p.income ?? initialProfile?.income,
                     cafNumber: p.cafNumber ?? initialProfile?.cafNumber,
-                    arrivalDate: p.arrivalDate ?? initialProfile?.arrivalDate
+                    arrivalDate: p.arrivalDate ?? initialProfile?.arrivalDate,
+                    birthDate: p.birthDate ?? initialProfile?.birthdate
                 };
+                console.log("DossierBuilder: Hydrated Applicant", merged);
+                return merged;
             }
             return p;
         });
@@ -49,34 +53,62 @@ export default function DossierBuilder({ userId, initialProfile, user }: Dossier
     const [activeTab, setActiveTab] = useState<string>('');
     const [isCreating, setIsCreating] = useState(false);
 
+    // Auto-Save Logic (Hoisted)
+    const saveTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+    const [isSaving, setIsSaving] = useState(false);
+    const [unsavedChanges, setUnsavedChanges] = useState(false);
+    const [lastServerResult, setLastServerResult] = useState<any>(null);
+
     // Select first person on load if exists
+    // Select Applicant by default, or first person if no applicant
     useEffect(() => {
         if (persons.length > 0 && !activeTab) {
-            setActiveTab(persons[0].id);
+            const applicant = persons.find(p => p.role === 'APPLICANT');
+            setActiveTab(applicant ? applicant.id : persons[0].id);
         }
-    }, [persons.length, activeTab]); // Depend on length to avoid rapid switching if person obj changes
+    }, [persons, activeTab]); // Depend on persons to retry if loaded later
 
     // Sync with Server Data (Revalidation updates props)
     useEffect(() => {
-        if (initialProfile?.dossierPersons) {
-            const merged = initialProfile.dossierPersons.map((p: any) => {
-                if (p.role === 'APPLICANT') {
-                    return {
-                        ...p,
-                        income: p.income ?? initialProfile.income,
-                        cafNumber: p.cafNumber ?? initialProfile.cafNumber,
-                        arrivalDate: p.arrivalDate ?? initialProfile.arrivalDate
-                    };
-                }
-                return p;
-            });
+        // PROTECTION A: User is actively working
+        if (unsavedChanges || isSaving) return;
 
-            // Only update if actually different to avoid cycles? 
-            // JSON stringify comparison is expensive but safe.
-            // For now, trust standard behavior, but if loop persists, add deep check.
-            setPersons(merged);
+        if (initialProfile?.dossierPersons) {
+            console.log("DossierBuilder: Checking New Props", initialProfile.dossierPersons);
+
+            setPersons(currentPersons => {
+                const merged = initialProfile.dossierPersons.map((p: any) => {
+                    // PROTECTION B: Timestamp Guard
+                    // If we recently saved this person (recorded in lastServerResult), 
+                    // and the incoming prop is OLDER than our save, ignore the prop.
+                    if (lastServerResult?.debugRecord?.id === p.id) {
+                        const lastSaveTime = new Date(lastServerResult.debugRecord.updatedAt).getTime();
+                        const propTime = new Date(p.updatedAt).getTime();
+
+                        // Allow 1000ms buffer for clock skew/precision loss
+                        if (propTime < lastSaveTime - 1000) {
+                            console.warn(`DossierBuilder: Ignoring STALE prop for ${p.id}. Prop: ${p.updatedAt}, LastSave: ${lastServerResult.debugRecord.updatedAt}`);
+                            // Return the CURRENT local version, not the stale prop
+                            const local = currentPersons.find(cp => cp.id === p.id);
+                            return local || p;
+                        }
+                    }
+
+                    if (p.role === 'APPLICANT') {
+                        return {
+                            ...p,
+                            income: p.income ?? initialProfile.income,
+                            cafNumber: p.cafNumber ?? initialProfile.cafNumber,
+                            arrivalDate: p.arrivalDate ?? initialProfile.arrivalDate,
+                            birthDate: p.birthDate ?? initialProfile.birthdate
+                        };
+                    }
+                    return p;
+                });
+                return merged;
+            });
         }
-    }, [initialProfile]);
+    }, [initialProfile, unsavedChanges, isSaving, lastServerResult]);
 
     // Sync Applicant Contact Info with Profile (Auto-fill Name/Email/Phone from Auth if missing)
     useEffect(() => {
@@ -200,25 +232,77 @@ export default function DossierBuilder({ userId, initialProfile, user }: Dossier
         }
     };
 
-    // State for manual save
-    const [unsavedChanges, setUnsavedChanges] = useState(false);
-
+    // Auto-Save Logic
     const handleUpdatePerson = (field: keyof DossierPerson | 'income', value: any) => {
-        if (!activePerson) return;
-        const updatedPerson = { ...activePerson, [field]: value };
-        setPersons(persons.map(p => p.id === activePerson.id ? updatedPerson : p));
+        console.log("DossierBuilder: User Input:", field, value);
+
+        setPersons(prevPersons => {
+            const currentActive = prevPersons.find(p => p.id === activeTab);
+            if (!currentActive) return prevPersons;
+
+            const updatedPerson = { ...currentActive, [field]: value };
+
+            // Trigger Save with the NEW updated person, not the stale 'activePerson' closure
+            const payload = {
+                ...updatedPerson,
+                email: updatedPerson.email || undefined,
+                phone: updatedPerson.phone || undefined,
+                birthDate: updatedPerson.birthDate || undefined,
+                arrivalDate: updatedPerson.arrivalDate || undefined,
+            };
+
+            // Debounce Logic needing access to latest payload
+            if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+            saveTimeoutRef.current = setTimeout(async () => {
+                setIsSaving(true);
+                try {
+                    const result = await upsertPerson(payload as any);
+                    console.log("DossierBuilder: Server Save Result", result);
+                    setLastServerResult(result);
+
+                    if (result.error) {
+                        console.error("Save Error:", result.error);
+                        toast.error(result.error);
+                    } else {
+                        setUnsavedChanges(false);
+                    }
+                } catch (error) {
+                    console.error("Failed to save", error);
+                    toast.error("Erreur de sauvegarde automatique");
+                } finally {
+                    setIsSaving(false);
+                }
+            }, 1000);
+
+            return prevPersons.map(p => p.id === activeTab ? updatedPerson : p);
+        });
+
         setUnsavedChanges(true);
     };
 
+    // Manual Trigger (Flush)
     const handleSave = async () => {
         if (!activePerson) return;
+        if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+
+        setIsSaving(true);
         try {
-            await upsertPerson(activePerson as any);
+            const payload = {
+                ...activePerson,
+                email: activePerson.email || undefined,
+                phone: activePerson.phone || undefined,
+                birthDate: activePerson.birthDate || undefined,
+                arrivalDate: activePerson.arrivalDate || undefined,
+            };
+
+            await upsertPerson(payload as any);
             toast.success("Modifications enregistrées");
             setUnsavedChanges(false);
         } catch (error) {
             console.error("Failed to save", error);
             toast.error("Erreur de sauvegarde");
+        } finally {
+            setIsSaving(false);
         }
     };
 
@@ -377,56 +461,61 @@ export default function DossierBuilder({ userId, initialProfile, user }: Dossier
 
                 {/* LEFT SIDEBAR navigation */}
                 <div className="w-full lg:w-64 flex flex-col gap-4 shrink-0">
-                    <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-2 flex flex-col gap-2 sticky top-24">
-                        <label className="text-xs font-bold text-gray-600 uppercase tracking-wider px-3 mt-2 mb-1">Candidat</label>
+                    <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-2 flex flex-row lg:flex-col gap-2 sticky top-24 overflow-x-auto no-scrollbar snap-x">
+
+                        {/* Mobile Label only if needed, otherwise hidden to save space */}
+                        <label className="hidden lg:block text-xs font-bold text-gray-600 uppercase tracking-wider px-3 mt-2 mb-1">Candidat</label>
+
                         {persons.filter(p => p.role === 'APPLICANT').map(p => (
                             <button
                                 key={p.id}
                                 onClick={() => setActiveTab(p.id)}
                                 className={`
-                                    flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-bold transition-all
+                                    flex items-center gap-2 px-3 py-1.5 lg:py-3 rounded-lg text-xs lg:text-sm font-bold transition-all shrink-0 snap-start border
                                     ${activeTab === p.id
-                                        ? 'bg-blue-600 text-white shadow-md'
-                                        : 'bg-white text-gray-600 hover:bg-gray-50 border border-transparent hover:border-gray-200'}
+                                        ? 'bg-blue-600 text-white shadow-md border-blue-600'
+                                        : 'bg-white text-gray-600 hover:bg-gray-50 border-gray-200'}
                                 `}
                             >
-                                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${activeTab === p.id ? 'bg-white/20' : 'bg-gray-100 text-gray-500'}`}>
-                                    <User className="w-4 h-4" />
+                                <div className={`w-5 h-5 lg:w-8 lg:h-8 rounded-full flex items-center justify-center ${activeTab === p.id ? 'bg-white/20' : 'bg-gray-100 text-gray-500'}`}>
+                                    <User className="w-3 h-3 lg:w-4 lg:h-4" />
                                 </div>
-                                <div className="text-left">
+                                <span className="lg:hidden">Moi</span>
+                                <div className="text-left hidden lg:block">
                                     <div className="leading-tight">Moi</div>
-                                    <div className={`text-xs font-normal ${activeTab === p.id ? 'text-blue-100' : 'text-gray-500'}`}>Profil Principal</div>
+                                    <div className={`hidden lg:block text-xs font-normal ${activeTab === p.id ? 'text-blue-100' : 'text-gray-500'}`}>Profil Principal</div>
                                 </div>
                             </button>
                         ))}
 
                         {(!persons.find(p => p.role === 'APPLICANT')) && (
-                            <button onClick={() => handleCreatePerson('APPLICANT')} disabled={isCreating} className="flex items-center gap-2 px-3 py-3 rounded-lg border border-dashed border-blue-300 bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors text-xs font-bold justify-center">
-                                <Plus className="w-4 h-4" /> Créer mon profil
+                            <button onClick={() => handleCreatePerson('APPLICANT')} disabled={isCreating} className="shrink-0 snap-start flex items-center gap-2 px-3 py-1.5 lg:py-3 rounded-lg border border-dashed border-blue-300 bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors text-xs font-bold justify-center">
+                                <Plus className="w-4 h-4" /> <span className="hidden lg:inline">Créer mon profil</span><span className="lg:hidden">Créer</span>
                             </button>
                         )}
 
-                        <div className="w-full h-px bg-gray-100 my-1"></div>
+                        <div className="w-px h-6 lg:w-full lg:h-px bg-gray-200 mx-1 lg:mx-0 lg:my-1 shrink-0 self-center"></div>
 
-                        <label className="text-xs font-bold text-gray-600 uppercase tracking-wider px-3 mb-1">Garants</label>
+                        <label className="hidden lg:block text-xs font-bold text-gray-600 uppercase tracking-wider px-3 mb-1">Garants</label>
 
                         {persons.filter(p => p.role === 'GUARANTOR').map(p => (
                             <button
                                 key={p.id}
                                 onClick={() => setActiveTab(p.id)}
                                 className={`
-                                    flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-bold transition-all
+                                    flex items-center gap-2 px-3 py-1.5 lg:py-3 rounded-lg text-xs lg:text-sm font-bold transition-all shrink-0 snap-start border
                                     ${activeTab === p.id
-                                        ? 'bg-indigo-600 text-white shadow-md'
-                                        : 'bg-white text-gray-600 hover:bg-gray-50 border border-transparent hover:border-gray-200'}
+                                        ? 'bg-indigo-600 text-white shadow-md border-indigo-600'
+                                        : 'bg-white text-gray-600 hover:bg-gray-50 border-gray-200'}
                                 `}
                             >
-                                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${activeTab === p.id ? 'bg-white/20' : 'bg-gray-100 text-gray-500'}`}>
-                                    <Shield className="w-4 h-4" />
+                                <div className={`w-5 h-5 lg:w-8 lg:h-8 rounded-full flex items-center justify-center ${activeTab === p.id ? 'bg-white/20' : 'bg-gray-100 text-gray-500'}`}>
+                                    <Shield className="w-3 h-3 lg:w-4 lg:h-4" />
                                 </div>
-                                <div className="text-left">
-                                    <div className="leading-tight truncate max-w-[120px]">{p.firstName || 'Nouveau Garant'}</div>
-                                    <div className={`text-xs font-normal ${activeTab === p.id ? 'text-indigo-100' : 'text-gray-500'}`}>Garant</div>
+                                <span className="lg:hidden truncate max-w-[80px]">{p.firstName || 'Garant'}</span>
+                                <div className="text-left hidden lg:block">
+                                    <div className="leading-tight truncate max-w-[80px] lg:max-w-[120px]">{p.firstName || 'Nouveau Garant'}</div>
+                                    <div className={`hidden lg:block text-xs font-normal ${activeTab === p.id ? 'text-indigo-100' : 'text-gray-500'}`}>Garant</div>
                                 </div>
                             </button>
                         ))}
@@ -434,12 +523,13 @@ export default function DossierBuilder({ userId, initialProfile, user }: Dossier
                         <button
                             onClick={() => handleCreatePerson('GUARANTOR')}
                             disabled={isCreating}
-                            className="flex items-center gap-2 px-3 py-3 rounded-lg border border-transparent bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-all text-sm font-bold justify-start group shadow-sm"
+                            className="shrink-0 snap-start flex items-center gap-2 px-3 py-1.5 lg:py-3 rounded-lg border border-transparent bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-all text-xs lg:text-sm font-bold justify-start group shadow-sm"
                         >
-                            <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-indigo-600 shadow-sm">
-                                <Plus className="w-4 h-4" />
+                            <div className="w-5 h-5 lg:w-8 lg:h-8 rounded-full bg-white flex items-center justify-center text-indigo-600 shadow-sm">
+                                <Plus className="w-3 h-3 lg:w-4 lg:h-4" />
                             </div>
-                            Ajouter un garant
+                            <span className="hidden lg:inline">Ajouter un garant</span>
+                            <span className="lg:hidden">Ajouter</span>
                         </button>
                     </div>
                 </div>
@@ -451,7 +541,7 @@ export default function DossierBuilder({ userId, initialProfile, user }: Dossier
 
                             {/* Header Personnalisation */}
                             <div className="p-6 border-b border-gray-100 bg-gray-50/50 flex flex-col sm:flex-row gap-6 items-start sm:items-center">
-                                <div className={`w-20 h-20 rounded-full flex items-center justify-center text-white shadow-lg ${activePerson.role === 'APPLICANT' ? 'bg-gradient-to-br from-blue-400 to-blue-600' : 'bg-gradient-to-br from-indigo-400 to-indigo-600'}`}>
+                                <div className={`hidden md:flex w-20 h-20 rounded-full items-center justify-center text-white shadow-lg ${activePerson.role === 'APPLICANT' ? 'bg-gradient-to-br from-blue-400 to-blue-600' : 'bg-gradient-to-br from-indigo-400 to-indigo-600'}`}>
                                     {activePerson.role === 'APPLICANT' ? <User className="w-10 h-10" /> : <Shield className="w-10 h-10" />}
                                 </div>
 
@@ -460,7 +550,7 @@ export default function DossierBuilder({ userId, initialProfile, user }: Dossier
                                         <div className="space-y-1">
                                             <label className="text-xs font-bold text-gray-600 uppercase block">Prénom</label>
                                             <input
-                                                className="block w-full text-lg font-bold text-gray-900 bg-white border border-gray-200 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all placeholder-gray-400"
+                                                className="block w-full text-sm font-bold text-gray-900 bg-white border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all placeholder-gray-400"
                                                 value={activePerson.firstName}
                                                 onChange={(e) => handleUpdatePerson('firstName', e.target.value)}
                                                 placeholder="Ex: Thomas"
@@ -469,7 +559,7 @@ export default function DossierBuilder({ userId, initialProfile, user }: Dossier
                                         <div className="space-y-1">
                                             <label className="text-xs font-bold text-gray-600 uppercase block">Nom</label>
                                             <input
-                                                className="block w-full text-lg font-bold text-gray-900 bg-white border border-gray-200 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all placeholder-gray-400"
+                                                className="block w-full text-sm font-bold text-gray-900 bg-white border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all placeholder-gray-400"
                                                 value={activePerson.lastName}
                                                 onChange={(e) => handleUpdatePerson('lastName', e.target.value)}
                                                 placeholder="Ex: Durand"
@@ -511,24 +601,24 @@ export default function DossierBuilder({ userId, initialProfile, user }: Dossier
                                         {activePerson.role === 'APPLICANT' && (
                                             <div className="flex-1 min-w-[150px]">
                                                 <label className="text-xs font-bold text-gray-600 uppercase block mb-1">Date de naissance</label>
-                                                <MaskedDateInput
-                                                    className="w-full bg-white border border-gray-200 rounded-lg py-2 px-3 text-sm font-bold text-gray-700 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all"
+                                                <input
+                                                    type="date"
+                                                    className="w-full bg-white border border-gray-200 rounded-lg py-2 px-3 text-sm font-bold text-gray-700 focus:ring-2 focus:ring-blue-100 focus:border-blue-500 focus:outline-none transition-all"
                                                     value={activePerson.birthDate ? new Date(activePerson.birthDate).toISOString().split('T')[0] : ''}
-                                                    onChange={(val) => {
-                                                        const dateObj = new Date(val);
-                                                        const ageDiff = Date.now() - dateObj.getTime();
-                                                        const ageDate = new Date(ageDiff);
-                                                        const isMinor = Math.abs(ageDate.getUTCFullYear() - 1970) < 18;
-
-                                                        // Use ISO string to satisfy Prisma DateTime
-                                                        try {
-                                                            const isoDate = new Date(val).toISOString();
-                                                            handleUpdatePerson('birthDate', isoDate);
-                                                            handleUpdatePerson('isMinor', isMinor);
-                                                        } catch (e) {
-                                                            // fallback
-                                                            handleUpdatePerson('birthDate', val);
+                                                    onChange={(e) => {
+                                                        const val = e.target.value;
+                                                        if (!val) {
+                                                            handleUpdatePerson('birthDate', null);
+                                                            return;
                                                         }
+
+                                                        // Ensure we create a clean date object
+                                                        const dateObj = new Date(val);
+                                                        const isMinor = (new Date().getFullYear() - dateObj.getFullYear()) < 18;
+
+                                                        // Store as ISO string
+                                                        handleUpdatePerson('birthDate', dateObj.toISOString());
+                                                        handleUpdatePerson('isMinor', isMinor);
                                                     }}
                                                 />
                                             </div>
@@ -538,17 +628,22 @@ export default function DossierBuilder({ userId, initialProfile, user }: Dossier
                             </div>
 
                             {/* CONTENT GRID */}
-                            <div className="p-6 grid gap-8">
+                            <div className="p-4 sm:p-6 grid gap-8">
                                 {/* CONTACT & GUARANTOR TYPE */}
                                 <div className="grid sm:grid-cols-2 gap-4">
                                     <div>
                                         <label className="text-xs font-bold text-gray-600 uppercase block mb-1">Email</label>
                                         <input
                                             type="email"
-                                            className="block w-full text-sm text-gray-900 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all placeholder-gray-400"
+                                            className={`block w-full text-sm border border-gray-200 rounded-lg px-3 py-2 outline-none transition-all placeholder-gray-400 ${activePerson.role === 'APPLICANT'
+                                                    ? 'bg-gray-100 text-gray-500 cursor-not-allowed select-none'
+                                                    : 'text-gray-900 bg-gray-50 focus:ring-2 focus:ring-blue-100 focus:border-blue-400'
+                                                }`}
                                             value={activePerson.email || ''}
                                             onChange={(e) => handleUpdatePerson('email', e.target.value)}
                                             placeholder="Ex: jean.dupont@email.com"
+                                            disabled={activePerson.role === 'APPLICANT'}
+                                            title={activePerson.role === 'APPLICANT' ? "L'email du compte ne peut pas être modifié ici." : ""}
                                         />
                                     </div>
                                     <div>
@@ -601,7 +696,7 @@ export default function DossierBuilder({ userId, initialProfile, user }: Dossier
                                 )}
 
                                 {/* DOCUMENT ZONES */}
-                                <div>
+                                <div className="min-w-0">
                                     <h3 className="text-lg font-bold text-gray-900 border-b border-gray-100 pb-2 mb-4">
                                         Pièces Justificatives <span className="text-gray-400 font-normal text-sm ml-2">Mises à jour selon votre profil</span>
                                     </h3>
@@ -620,7 +715,7 @@ export default function DossierBuilder({ userId, initialProfile, user }: Dossier
                                         {requirements?.orGroups.map((group, idx) => {
                                             const groupHasDoc = group.some(dt => activePerson.documents?.some(d => d.type === dt));
                                             return (
-                                                <div key={idx} className={`p-5 rounded-xl border-2 border-dashed transition-all ${groupHasDoc ? 'border-green-200 bg-green-50/50' : 'border-gray-200 bg-gray-50/50'}`}>
+                                                <div key={idx} className={`p-4 rounded-xl border-2 border-dashed transition-all ${groupHasDoc ? 'border-green-200 bg-green-50/50' : 'border-gray-200 bg-gray-50/50'}`}>
                                                     <div className="flex justify-between items-center mb-3">
                                                         <span className="font-bold text-gray-700 text-sm">Justificatif de Ressources (Choisir 1 option)</span>
                                                         {groupHasDoc && <span className="bg-green-100 text-green-700 text-[10px] font-bold px-2 py-0.5 rounded">Validé</span>}
@@ -664,18 +759,25 @@ export default function DossierBuilder({ userId, initialProfile, user }: Dossier
                                     </button>
                                 ) : <div></div>}
 
-                                {(unsavedChanges || activePerson.role === 'APPLICANT') && (
-                                    <button
-                                        onClick={handleSave}
-                                        // disabled={!unsavedChanges} // Optional: allow explicit save even if no detected change
-                                        className={`px-6 py-2 rounded-lg font-bold transition shadow-md ${unsavedChanges
-                                            ? 'bg-blue-600 text-white hover:bg-blue-700 animate-pulse'
-                                            : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'}`}
-                                    >
-                                        {unsavedChanges ? 'Enregistrer' : 'Enregistré'}
-                                    </button>
+                                {(unsavedChanges || isSaving || activePerson.role === 'APPLICANT') && (
+                                    <div className="flex items-center gap-4">
+                                        {isSaving && <span className="text-xs text-gray-400 animate-pulse">Sauvegarde...</span>}
+
+                                        <button
+                                            onClick={handleSave}
+                                            disabled={!unsavedChanges && !isSaving}
+                                            className={`px-6 py-2 rounded-lg font-bold transition shadow-md flex items-center gap-2 ${unsavedChanges || isSaving
+                                                ? 'bg-blue-600 text-white hover:bg-blue-700'
+                                                : 'bg-white text-gray-400 border border-gray-100 cursor-default'
+                                                }`}
+                                        >
+                                            {isSaving ? <Briefcase className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                                            {unsavedChanges ? 'Enregistrer' : 'Enregistré'}
+                                        </button>
+                                    </div>
                                 )}
                             </div>
+
 
                         </div>
                     ) : (
@@ -758,7 +860,6 @@ function DocumentDropZone({ docType, required, mini, personId, existingDoc }: { 
             });
 
             if (!uploadRes.ok) {
-                // Try to parse text from error
                 const errText = await uploadRes.text();
                 console.error('Upload Error:', errText);
                 throw new Error(`Erreur lors du transfert (${uploadRes.status})`);
@@ -774,7 +875,6 @@ function DocumentDropZone({ docType, required, mini, personId, existingDoc }: { 
         } catch (err: any) {
             console.error(err);
             setStatus('ERROR');
-            // Clean up error message to be user friendly
             const msg = err.message || 'Erreur inconnue';
             let finalMsg = msg;
             if (msg.includes('row-level security')) {
@@ -786,48 +886,49 @@ function DocumentDropZone({ docType, required, mini, personId, existingDoc }: { 
     };
 
     return (
-        <div className={`group relative border-2 border-dashed rounded-xl transition-all cursor-pointer overflow-hidden
-            ${mini ? 'p-4' : 'p-6'} 
+        <div className={`group relative border rounded-lg transition-all cursor-pointer overflow-hidden
+            ${mini ? 'p-2' : 'p-3'} 
             ${status === 'ERROR' ? 'border-red-300 bg-red-50' :
                 status === 'SUCCESS' ? 'border-green-300 bg-green-50' :
                     'border-gray-200 hover:border-blue-400 bg-white hover:bg-blue-50/10'}
         `}>
-            <div className="flex items-start justify-between relative z-10 gap-4">
-                <div className="flex items-start gap-4 flex-1 min-w-0">
-                    {!mini && (
-                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 transition-all ${status === 'SUCCESS' ? 'bg-green-100 text-green-600' : 'bg-blue-50 text-blue-600 group-hover:scale-110'
-                            }`}>
-                            {status === 'UPLOADING' ? (
-                                <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                            ) : status === 'SUCCESS' ? (
-                                <CheckCircle2 className="w-5 h-5" />
-                            ) : (
-                                <UploadCloud className="w-5 h-5" />
-                            )}
-                        </div>
-                    )}
-                    <div className="min-w-0 flex-1">
-                        <h4 className={`font-bold text-gray-900 mb-1 truncate ${mini ? 'text-sm' : ''}`} title={labels[docType] || docType}>
-                            {labels[docType] || docType}
-                        </h4>
-                        {!mini && (
-                            <p className="text-sm text-gray-500 font-medium truncate" title={status === 'SUCCESS' ? (fileName || 'Document enregistré') : status === 'ERROR' ? errorMsg : 'Glissez votre fichier ici'}>
-                                {status === 'UPLOADING' ? 'Envoi en cours...' :
-                                    status === 'SUCCESS' ? (fileName || 'Document enregistré') :
-                                        status === 'ERROR' ? errorMsg :
-                                            'Glissez votre fichier ici ou cliquez pour parcourir.'}
-                            </p>
-                        )}
-                        {!mini && status !== 'UPLOADING' && status !== 'ERROR' && (
-                            <p className="text-xs text-gray-400 mt-1 truncate">
-                                {status === 'SUCCESS' ? 'Cliquez pour remplacer' : 'PDF, JPG, PNG (Max 5Mo)'}
-                            </p>
+            <div className="flex items-center justify-between relative z-10 gap-3">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-all ${status === 'SUCCESS' ? 'bg-green-100 text-green-600' : 'bg-blue-50 text-blue-600 group-hover:scale-110'
+                        }`}>
+                        {status === 'UPLOADING' ? (
+                            <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                        ) : status === 'SUCCESS' ? (
+                            <CheckCircle2 className="w-4 h-4" />
+                        ) : (
+                            <UploadCloud className="w-4 h-4" />
                         )}
                     </div>
+
+                    <div className="min-w-0 flex-1 flex flex-col justify-center">
+                        <div className="flex items-center gap-2">
+                            <h4 className={`font-bold text-gray-900 truncate ${mini ? 'text-xs' : 'text-sm'}`} title={labels[docType] || docType}>
+                                {labels[docType] || docType}
+                            </h4>
+                            {required && status !== 'SUCCESS' && (
+                                <span className="bg-slate-100 text-slate-500 text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0">Obli.</span>
+                            )}
+                        </div>
+
+                        <p className={`text-gray-500 truncate ${mini ? 'hidden' : 'text-xs'}`}>
+                            {status === 'SUCCESS' ? (fileName || 'Document ajouté') : (status === 'ERROR' ? errorMsg : 'Ajouter un fichier')}
+                        </p>
+                    </div>
                 </div>
-                {required && status !== 'SUCCESS' && (
-                    <span className="bg-slate-100 text-slate-600 text-xs font-bold px-2 py-1 rounded shrink-0">Obligatoire</span>
-                )}
+
+                {/* Status Indicator / Mobile Action */}
+                <div className="shrink-0 text-xs font-medium text-blue-600">
+                    {status === 'SUCCESS' ? (
+                        <span className="text-green-600 text-[10px] bg-green-100 px-2 py-1 rounded-full">Modifier</span>
+                    ) : (
+                        <span className="text-blue-600 text-[10px] bg-blue-50 px-2 py-1 rounded-full">Ajouter</span>
+                    )}
+                </div>
             </div>
 
             {/* Hidden Input */}

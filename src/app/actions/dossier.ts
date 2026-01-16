@@ -3,7 +3,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { prisma } from '@/lib/db';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
 import { DossierPerson, PersonRole, PersonStatus, NationalityGroup, GuarantorType } from '@prisma/client';
 
 export type UpsertPersonData = {
@@ -67,40 +67,32 @@ export async function upsertPerson(data: UpsertPersonData) {
             });
         }
 
-        // Sanitize data: Remove nested relations like 'documents' and metadata
-        const { documents, id, createdAt, updatedAt, profileId, income, cafNumber, arrivalDate, ...cleanData } = data as any;
+        // Sanitize data: Remove nested relations like 'documents' and metadata AND birthDate (field collision)
+        const { documents, id, createdAt, updatedAt, profileId, income, cafNumber, arrivalDate, birthDate, ...cleanData } = data as any;
 
-        // Logic split: Update if existing ID + Ownership, else Create
-        if (data.id && data.id.length > 20) {
-            // Check ownership
-            const existing = await prisma.dossierPerson.findUnique({ where: { id: data.id } });
-            if (existing && existing.profileId !== user.id) return { error: 'Unauthorized' };
-
-            await prisma.dossierPerson.update({
-                where: { id: data.id },
-                data: { ...cleanData }
-            });
-        } else {
-            await prisma.dossierPerson.create({
-                data: {
-                    ...cleanData,
-                    profileId: user.id
-                }
-            });
+        // Sanitize birthDate: Ensure it's a Date object for Prisma
+        let finalBirthDate: Date | null = null;
+        if (data.birthDate) {
+            const d = new Date(data.birthDate);
+            if (!isNaN(d.getTime())) {
+                finalBirthDate = d;
+            }
         }
+
+        console.log("UpsertPerson: Processing", { id: data.id, inputBirthDate: data.birthDate, finalBirthDate });
 
         // SYNC PROFILE FIELDS (If Applicant)
         if (data.role === 'APPLICANT') {
             const profileUpdates: any = {
-                firstName: data.firstName, // Sync name too
+                firstName: data.firstName,
                 lastName: data.lastName,
                 phone: data.phone,
-                status: data.status, // Sync status (STUDENT, etc.)
+                status: data.status,
             };
             if (data.income !== undefined) profileUpdates.income = data.income;
             if (data.cafNumber !== undefined) profileUpdates.cafNumber = data.cafNumber;
             if (data.arrivalDate !== undefined) profileUpdates.arrivalDate = data.arrivalDate;
-            if (data.birthDate !== undefined) profileUpdates.birthdate = data.birthDate; // Sync birthdate to Profile (lowercase d in schema)
+            if (finalBirthDate) profileUpdates.birthdate = finalBirthDate; // Use Date object
 
             await prisma.profile.update({
                 where: { id: user.id },
@@ -108,8 +100,56 @@ export async function upsertPerson(data: UpsertPersonData) {
             });
         }
 
+        // Explicit Allowlist for DossierPerson (Safer than Omit)
+        const personData = {
+            role: data.role,
+            firstName: data.firstName,
+            lastName: data.lastName,
+            email: data.email,
+            phone: data.phone,
+            status: data.status,
+            nationality: data.nationality,
+            isMinor: data.isMinor,
+            guarantorType: data.guarantorType,
+            birthDate: finalBirthDate, // The sanitized date
+            updatedAt: new Date()
+        };
+
+        let updatedRecord = null;
+
+        // Logic split: Update if existing ID + Ownership, else Create
+        if (data.id && data.id.length > 20) {
+            // Check ownership
+            const existing = await prisma.dossierPerson.findUnique({ where: { id: data.id } });
+            if (existing && existing.profileId !== user.id) return { error: 'Unauthorized' };
+
+            console.log("UpsertPerson: Executing Update (Strict)", JSON.stringify(personData, null, 2));
+
+            updatedRecord = await prisma.dossierPerson.update({
+                where: { id: data.id },
+                data: personData
+            });
+        } else {
+            updatedRecord = await prisma.dossierPerson.create({
+                data: {
+                    ...personData,
+                    profileId: user.id
+                }
+            });
+        }
+
         revalidatePath('/account/dossier');
-        return { success: true };
+        revalidateTag(`dossier-${user.id}`);
+
+        return {
+            success: true,
+            debugRecord: updatedRecord,
+            debugTrace: {
+                receivedInput: data,
+                parsedDate: finalBirthDate,
+                updatePayload: personData
+            }
+        };
     } catch (e: any) {
         console.error("UPSERT PERSON ERROR:", e);
         return { error: `Erreur Technique: ${e.message}` };
@@ -142,6 +182,7 @@ export async function deletePerson(personId: string) {
 
     await prisma.dossierPerson.delete({ where: { id: personId } });
     revalidatePath('/account/dossier');
+    revalidateTag(`dossier-${user.id}`);
     return { success: true };
 }
 
@@ -257,6 +298,7 @@ export async function saveUserDocument(personId: string, docType: string, filePa
             }
         });
         revalidatePath('/account/dossier');
+        revalidateTag(`dossier-${user.id}`);
         return { success: true };
     } catch (e: any) {
         console.error(e);

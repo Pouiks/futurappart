@@ -5,6 +5,8 @@ import dynamic from 'next/dynamic';
 import { FilterPanel } from '@/components/features/FilterPanel';
 import { UnitCard } from '@/components/ui/UnitCard';
 import { useTranslations } from 'next-intl';
+import { MobileFilterDrawer } from '@/components/features/MobileFilterDrawer';
+import { SlidersHorizontal } from 'lucide-react';
 
 // Dynamic import for Leaflet map to avoid SSR issues
 const CityMap = dynamic(
@@ -33,6 +35,8 @@ export default function SearchClient({ cities }: SearchClientProps) {
 
     // Map Toggle State
     const [showMap, setShowMap] = useState(false);
+    const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
+    const [previewCount, setPreviewCount] = useState<number | undefined>(undefined);
 
     // Initial search on mount
     useEffect(() => {
@@ -94,12 +98,23 @@ export default function SearchClient({ cities }: SearchClientProps) {
 
             <main className={`flex-1 w-full max-w-[1920px] mx-auto flex flex-col md:flex-row relative ${showMap ? 'overflow-hidden' : ''}`}>
 
-                {/* Left: Filters (Sidebar) */}
+                {/* Left: Filters (Sidebar - Hidden on Mobile) */}
                 <aside className={`w-full md:w-80 flex-shrink-0 bg-white border-r border-gray-200 z-20 hidden md:block ${showMap ? 'overflow-y-auto' : 'sticky top-0 h-screen overflow-y-auto'}`}>
                     <div className="p-4">
                         <FilterPanel onSearch={handleSearch} cities={cities} stats={cityStats} />
                     </div>
                 </aside>
+
+                {/* Mobile Filter Button (Visible on Mobile) */}
+                <div className="md:hidden px-4 pt-4 pb-2">
+                    <button
+                        onClick={() => setIsFilterDrawerOpen(true)}
+                        className="w-full bg-white border border-gray-200 text-gray-900 font-bold py-3 rounded-xl shadow-sm flex items-center justify-center gap-2"
+                    >
+                        <SlidersHorizontal className="w-4 h-4" />
+                        Filtrer la recherche
+                    </button>
+                </div>
 
                 {/* Middle: Results */}
                 <div className={`flex-1 p-4 md:p-6 bg-gray-50 relative transition-all duration-300 ${showMap ? 'overflow-y-auto' : ''}`} id="results-container">
@@ -139,7 +154,7 @@ export default function SearchClient({ cities }: SearchClientProps) {
                                 </div>
 
                                 {results.length > 0 ? (
-                                    <div className={`grid gap-6 ${showMap ? 'grid-cols-1 xl:grid-cols-2' : 'grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4'}`}>
+                                    <div className={`grid gap-6 ${showMap ? 'grid-cols-1 xl:grid-cols-2' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5'}`}>
                                         {results.map((unit, idx) => (
                                             <div
                                                 key={unit.id}
@@ -163,7 +178,7 @@ export default function SearchClient({ cities }: SearchClientProps) {
                             {others.length > 0 && (
                                 <section className="pt-8 border-t border-gray-100">
                                     <h2 className="text-xl font-bold mb-1 text-gray-800">{t('others')}</h2>
-                                    <div className={`grid gap-4 mt-6 ${showMap ? 'grid-cols-1 xl:grid-cols-2' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4'}`}>
+                                    <div className={`grid gap-4 mt-6 ${showMap ? 'grid-cols-1 xl:grid-cols-2' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5'}`}>
                                         {others.map((unit) => (
                                             <div
                                                 key={unit.id}
@@ -213,6 +228,35 @@ export default function SearchClient({ cities }: SearchClientProps) {
                     </div>
                 )}
             </main>
+
+            <MobileFilterDrawer
+                isOpen={isFilterDrawerOpen}
+                onClose={() => setIsFilterDrawerOpen(false)}
+                currentFilters={{
+                    city: currentCity,
+                    budget: Number(new URLSearchParams(window.location.search).get('budgetMax')) || 800,
+                    types: new URLSearchParams(window.location.search).get('types')?.split(',') || [],
+                    date: new URLSearchParams(window.location.search).get('date') || ''
+                }}
+                onApply={(filters) => {
+                    handleSearch({
+                        city: filters.city,
+                        budgetMax: filters.budget,
+                        minSurface: 15,
+                        types: filters.types,
+                        priority: 'BALANCE',
+                        date: filters.date
+                    });
+                }}
+                onFilterChange={(filters) => {
+                    const totalMatches = allUnits.filter(u =>
+                        u.price <= filters.budget &&
+                        (filters.types.length === 0 || filters.types.includes(u.type))
+                    ).length;
+                    setPreviewCount(totalMatches);
+                }}
+                resultCount={previewCount !== undefined ? previewCount : (meta?.total || results.length)}
+            />
         </div>
     );
 }
